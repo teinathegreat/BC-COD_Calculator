@@ -1,177 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bachcare Calculator</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Bachcare Calculator (Compiled, No Babel)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f7f9fa; padding: 20px; }
-    .calculator-container { background: #fff; max-width: 900px; margin: auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    h1 { text-align: center; margin-bottom: 20px; }
-    label { display: block; margin-top: 10px; font-weight: bold; }
-    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
-    button { margin-top: 20px; padding: 10px; background: #0078d7; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #005fa3; }
-    .output { margin-top: 20px; background: #f1f3f4; padding: 15px; border-radius: 8px; white-space: pre-line; }
-    textarea { width: 100%; height: 200px; margin-top: 10px; }
-    .booking-section { border: 1px solid #ddd; padding: 15px; margin-top: 15px; border-radius: 8px; }
-    .booking-section h2 { margin-top: 0; font-size: 18px; }
+    .card{background:#fff;border:1px solid #f1f5f9;border-radius:1rem;padding:1.25rem;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+    .row{display:flex;justify-content:space-between;align-items:center}
+    .tile{background:#f8fafc;border:1px solid #f1f5f9;border-radius:1rem;padding:1rem}
   </style>
 </head>
-<body>
-  <div class="calculator-container">
-    <h1>Bachcare Calculator</h1>
+<body class="bg-gray-50">
+  <div class="min-h-screen w-full max-w-5xl mx-auto p-6">
+    <h1 class="text-3xl font-bold tracking-tight mb-4">Rehouse / Date Change, RON & Extension Calculator (NZD)</h1>
 
-    <label for="mode">Mode</label>
-    <select id="mode">
-      <option value="COD">COD (Change of Dates)</option>
-      <option value="RON">RON (Reduction of Nights)</option>
-      <option value="EXT">Extension</option>
-    </select>
-
-    <!-- Booking 1 -->
-    <div class="booking-section">
-      <h2>Original Booking</h2>
-      <label for="platform1">Platform</label>
-      <select id="platform1">
-        <option value="direct">Direct</option>
-        <option value="airbnb">Airbnb</option>
-        <option value="booking">Booking.com</option>
-        <option value="vrbo">VRBO</option>
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <select id="mode" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
+        <option value="change">Change of Date (COD)</option>
+        <option value="ron">Reduction of Nights (RON)</option>
+        <option value="extension">Extension</option>
       </select>
 
-      <label for="rent1">Rent ($)</label>
-      <input type="number" id="rent1" />
-
-      <label for="linen1">Linen ($)</label>
-      <input type="number" id="linen1" value="0" />
-
-      <label for="cleaning1">Cleaning ($)</label>
-      <input type="number" id="cleaning1" value="0" />
-
-      <label for="nights1">Nights</label>
-      <input type="number" id="nights1" value="1" />
-    </div>
-
-    <!-- Booking 2 -->
-    <div class="booking-section">
-      <h2>New Booking</h2>
-      <label for="platform2">Platform</label>
-      <select id="platform2">
-        <option value="direct">Direct</option>
-        <option value="airbnb">Airbnb</option>
-        <option value="booking">Booking.com</option>
-        <option value="vrbo">VRBO</option>
+      <select id="channel" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
+        <option value="direct|Bachcare Direct|0">Bachcare Direct</option>
+        <option value="bcom|B.com|0.239" selected>B.com</option>
+        <option value="vrbo|VRBO|0.202">VRBO</option>
+        <option value="airbnb|Airbnb|0.255">Airbnb</option>
       </select>
 
-      <label for="rent2">Rent ($)</label>
-      <input type="number" id="rent2" />
-
-      <label for="linen2">Linen ($)</label>
-      <input type="number" id="linen2" value="0" />
-
-      <label for="cleaning2">Cleaning ($)</label>
-      <input type="number" id="cleaning2" value="0" />
-
-      <label for="nights2">Nights</label>
-      <input type="number" id="nights2" value="1" />
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="waiveGST"> Waive GST for rehouse (Bump)</label>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="applyOwnerGST"> Apply Owner GST on Rent (markup base)</label>
+      <label class="block">
+        <span class="text-sm font-medium text-gray-700">Owner GST Rate</span>
+        <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
+      </label>
     </div>
 
-    <label for="bookingFee">Booking Fee ($)</label>
-    <input type="number" id="bookingFee" value="75" />
+    <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">Original Dates</h2>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Start</span><input type="date" id="origStart" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+        <label class="block"><span class="text-sm font-medium text-gray-700">End</span><input type="date" id="origEnd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+        <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights"></span></div>
+      </section>
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">New Dates</h2>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Start</span><input type="date" id="newStart" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+        <label class="block"><span class="text-sm font-medium text-gray-700">End</span><input type="date" id="newEnd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+        <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="newNights"></span></div>
+      </section>
+    </div>
 
-    <label for="gstWaive">Waive GST (Bump)?</label>
-    <select id="gstWaive">
-      <option value="yes">Yes</option>
-      <option value="no">No</option>
-    </select>
+    <!-- COD UI -->
+    <div id="codWrap" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">First Booking (original)</h2>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span><input type="text" id="rent1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00"></label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual total)</span><input type="text" id="linen1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="leave blank to auto"></label>
+          <label class="block"><span class="text-sm font-medium text-gray-700">Linen rate per set</span><input type="text" id="linenRate" value="120" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+          <label class="block"><span class="text-sm font-medium text-gray-700">Extra linen sets (+)</span><input type="text" id="extraLinen1" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="linenIncl1"> Linen included in rent</label>
+        </div>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning</span><input type="text" id="clean1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 150.00"></label>
+        <div>
+          <button type="button" id="codOptBtn1" class="text-sm text-gray-700 underline underline-offset-2">Add optional fields</button>
+          <div id="codOpt1" class="mt-3 hidden">
+            <label class="block"><span class="text-sm font-medium text-gray-700">Pet (optional)</span><input type="text" id="pet1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee</span><input type="text" id="fee1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Min</span><input type="text" id="feeMin" value="28.75" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Max</span><input type="text" id="feeMax" value="999.00" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            </div>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Other (optional)</span><input type="text" id="other1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 my-2"></div>
+        <div class="row"><span class="text-gray-600">Auto linen sets</span><span id="autoSets1"></span></div>
+        <div class="row"><span class="text-gray-600">Computed Linen</span><span id="compLinen1"></span></div>
+        <div class="row"><span class="text-gray-600">First Booking Total</span><span id="total1" class="font-semibold"></span></div>
+      </section>
 
-    <button onclick="calculate()">Calculate</button>
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">Second Booking (new)</h2>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span><input type="text" id="rent2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,080.00"></label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual total)</span><input type="text" id="linen2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="leave blank to auto"></label>
+          <label class="block"><span class="text-sm font-medium text-gray-700">Extra linen sets (+)</span><input type="text" id="extraLinen2" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="linenIncl2"> Linen included in rent</label>
+        </div>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning</span><input type="text" id="clean2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 150.00"></label>
+        <div>
+          <button type="button" id="codOptBtn2" class="text-sm text-gray-700 underline underline-offset-2">Add optional fields</button>
+          <div id="codOpt2" class="mt-3 hidden">
+            <label class="block"><span class="text-sm font-medium text-gray-700">Pet (optional)</span><input type="text" id="pet2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee</span><input type="text" id="fee2" value="40" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Min</span><input type="text" id="feeMin2" value="28.75" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Max</span><input type="text" id="feeMax2" value="999.00" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            </div>
+            <label class="block"><span class="text-sm font-medium text-gray-700">GEL Total (leave blank to auto)</span><input type="text" id="gel2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="auto $12/night"></label>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Other (optional)</span><input type="text" id="other2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 my-2"></div>
+        <div class="row"><span class="text-gray-600">Auto linen sets</span><span id="autoSets2"></span></div>
+        <div class="row"><span class="text-gray-600">Computed Linen</span><span id="compLinen2"></span></div>
+        <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2"></span></div>
+        <div class="row"><span class="text-gray-600">Second Booking Total</span><span id="total2" class="font-semibold"></span></div>
+      </section>
 
-    <div class="output" id="output">Fill in the fields and press Calculate to see the breakdown.</div>
-    <label>Finance Note Output:</label>
-    <textarea id="financeNote"></textarea>
+      <div class="lg:col-span-2">
+        <div class="mt-6 card">
+          <h3 class="text-lg font-semibold mb-2">Outcome</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="tile"><div class="text-sm text-gray-600">First Total</div><div id="tile1" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">Original booking charges.</div></div>
+            <div class="tile"><div class="text-sm text-gray-600">Second Total</div><div id="tile2" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">New booking charges.</div></div>
+            <div class="tile"><div class="text-sm text-gray-600" id="tile3label">Excess to Collect</div><div id="tile3" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500" id="tile3desc">Collect this amount</div></div>
+          </div>
+          <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <section class="card">
+              <h2 class="text-xl font-semibold mb-3">Finance Breakdown (HTML)</h2>
+              <textarea id="htmlCOD" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
+              <button id="copyCOD" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy HTML Breakdown</button>
+            </section>
+            <div class="flex items-end"><button id="resetAll" class="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 transition">Reset</button></div>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">COD negatives are absorbed per policy.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Extension UI -->
+    <div id="extWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">Extension Inputs</h2>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Nightly Rent Only</span><input type="text" id="nightlyRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 180.00"></label>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (new)</span><input type="text" id="newCleaningRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 150.00"></label>
+        <label class="block"><span class="text-sm font-medium text-gray-700">Linen (new)</span><input type="text" id="newLinenRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 120.00"></label>
+        <div>
+          <button type="button" id="extOptBtn" class="text-sm text-gray-700 underline underline-offset-2">Add optional fields</button>
+          <div id="extOpt" class="mt-3 hidden">
+            <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee (new)</span><input type="text" id="newBookingFee" value="40" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
+            <label class="block"><span class="text-sm font-medium text-gray-700">GEL Total (new)</span><input type="text" id="newGelTotal" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="leave blank to auto"></label>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 my-2"></div>
+        <div class="row"><span class="text-gray-600">Additional Nights</span><span id="addNights"></span></div>
+        <div class="row"><span class="text-gray-600">Additional Rent Subtotal</span><span id="addRentSubtotal"></span></div>
+        <div class="row"><span class="text-gray-600">Service Fee (7.1%)</span><span id="extServiceFee"></span></div>
+        <div class="row"><span class="text-gray-600">Total to Collect</span><span id="extTotal" class="font-semibold"></span></div>
+      </section>
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">Finance Breakdown (HTML)</h2>
+        <textarea id="htmlEXT" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
+        <button id="copyEXT" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy HTML Breakdown</button>
+      </section>
+    </div>
+
+    <!-- RON UI -->
+    <div id="ronWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">RON Summary</h2>
+        <div class="row"><span class="text-gray-600">Nights removed</span><span id="nightsRemoved"></span></div>
+        <div class="row"><span class="text-gray-600">GEL to refund</span><span id="ronGelRefund"></span></div>
+        <div class="row"><span class="text-gray-600">Markup on GEL + fee share</span><span id="ronMarkup"></span></div>
+        <div class="row"><span class="text-gray-600">Service fee share (7.1%)</span><span id="ronService"></span></div>
+        <div class="row"><span class="text-gray-600">Total refund (RON)</span><span id="ronTotal" class="font-semibold"></span></div>
+      </section>
+      <section class="card">
+        <h2 class="text-xl font-semibold mb-3">Finance Breakdown (HTML)</h2>
+        <textarea id="htmlRON" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
+        <button id="copyRON" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy HTML Breakdown</button>
+      </section>
+    </div>
+
+    <p class="text-xs text-gray-500 mt-5">Tip: Enter numbers only (e.g. 120 or 120.50). Currency shown in NZD.</p>
   </div>
 
   <script>
-    function getChannelMarkup(platform) {
-      switch(platform) {
-        case 'airbnb': return 0.18; // 18%
-        case 'booking': return 0.15; // 15%
-        case 'vrbo': return 0.12; // 12%
-        default: return 0; // direct
-      }
+    // Helpers
+    const toCents = (v) => { const n = typeof v === 'number' ? v : parseFloat(String(v || '').replace(/[^0-9.-]/g,'')); if (Number.isNaN(n)) return 0; return Math.round(n*100); };
+    const nzd = (c) => new Intl.NumberFormat('en-NZ', {style:'currency', currency:'NZD'}).format((c||0)/100);
+    const GEL_PER_NIGHT_C = 1200, SERVICE_FEE_PCT = 0.071;
+
+    const el = (id)=>document.getElementById(id);
+    const parseDate = (s)=> s ? new Date(s) : null;
+    const nights = (a,b)=>{ const A=parseDate(a), B=parseDate(b); if(!A||!B) return 0; return Math.max(0, Math.round((B-A)/(1000*60*60*24))); };
+
+    function currentChannel(){ const [key,label,mu] = el('channel').value.split('|'); return {key,label,markup:parseFloat(mu)}; }
+
+    function updateVisibility(){ const m = el('mode').value; el('codWrap').classList.toggle('hidden', m!=='change'); el('extWrap').classList.toggle('hidden', m!=='extension'); el('ronWrap').classList.toggle('hidden', m!=='ron'); }
+
+    function compute(){
+      const origStart = el('origStart').value, origEnd = el('origEnd').value, newStart = el('newStart').value, newEnd = el('newEnd').value;
+      const origN = nights(origStart, origEnd), newN = nights(newStart, newEnd);
+      el('origNights').textContent = origN; el('newNights').textContent = newN;
+      const removedN = Math.max(0, origN - newN); el('nightsRemoved').textContent = removedN;
+
+      const waiveGST = el('waiveGST').checked; const applyOwnerGST = el('applyOwnerGST').checked && !waiveGST; const gstRate = parseFloat(el('ownerGSTRate').value || '0');
+      const channel = currentChannel();
+
+      const linenRate = toCents(el('linenRate').value);
+      const extra1 = parseInt(el('extraLinen1').value || '0',10); const extra2 = parseInt(el('extraLinen2').value || '0',10);
+      const sets1 = el('linenIncl1').checked ? 0 : Math.max(1, Math.ceil(origN/28) + extra1);
+      const sets2 = el('linenIncl2').checked ? 0 : Math.max(1, Math.ceil(newN/28) + extra2);
+      el('autoSets1').textContent = sets1; el('autoSets2').textContent = sets2;
+
+      const b1 = { rent: toCents(el('rent1').value), linen: (el('linen1').value.trim()!=='' ? toCents(el('linen1').value) : linenRate*sets1), clean: toCents(el('clean1').value), pet: toCents(el('pet1').value), fee: toCents(el('fee1').value), other: toCents(el('other1').value) };
+      const feeMin = toCents(el('feeMin').value), feeMax = toCents(el('feeMax').value); b1.fee = Math.min(Math.max(b1.fee, feeMin), feeMax);
+
+      const b2 = { rent: toCents(el('rent2').value), linen: (el('linen2').value.trim()!=='' ? toCents(el('linen2').value) : linenRate*sets2), clean: toCents(el('clean2').value), pet: toCents(el('pet2').value), fee: toCents(el('fee2').value || '40'), gel: (el('gel2').value.trim()!=='' ? toCents(el('gel2').value) : newN*GEL_PER_NIGHT_C), other: toCents(el('other2').value) };
+      const feeMin2 = toCents(el('feeMin2').value), feeMax2 = toCents(el('feeMax2').value); b2.fee = Math.min(Math.max(b2.fee, feeMin2), feeMax2);
+
+      const ownerGST1C = applyOwnerGST ? Math.round(b1.rent * gstRate) : 0; const ownerGST2C = applyOwnerGST ? Math.round(b2.rent * gstRate) : 0;
+      const markup1C = Math.round((b1.rent + ownerGST1C + b1.fee + 0) * channel.markup);
+      const markup2C = Math.round((b2.rent + ownerGST2C + b2.fee + b2.gel) * channel.markup);
+
+      const total1 = b1.rent + b1.linen + b1.clean + b1.pet + b1.fee + markup1C + b1.other;
+      const total2 = b2.rent + b2.linen + b2.clean + b2.pet + b2.fee + b2.gel + markup2C + b2.other;
+      const diff = total2 - total1; const codCollectC = Math.max(0, diff);
+
+      el('compLinen1').textContent = nzd(b1.linen); el('compLinen2').textContent = nzd(b2.linen); el('gelAuto2').textContent = nzd(b2.gel);
+      el('total1').textContent = nzd(total1); el('total2').textContent = nzd(total2); el('tile1').textContent = nzd(total1); el('tile2').textContent = nzd(total2);
+      el('tile3').textContent = nzd(Math.abs(diff)); el('tile3label').textContent = diff>=0 ? 'Excess to Collect' : 'Refund to Guest'; el('tile3desc').textContent = diff>=0 ? 'Collect this amount' : 'Refund due (policy may absorb)';
+
+      const gstLine = waiveGST ? '<b>GST:</b> Waived (Bump)<br>' : (applyOwnerGST ? '<b>GST:</b> Applied on rent for markup base<br>' : '<b>GST:</b> Not applied<br>');
+      el('htmlCOD').value = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + '<b>Change of Date (COD)</b><br>' + gstLine + '<b>Original Booking</b><br>' + `Rent: ${nzd(b1.rent)}<br>` + `Linen: ${nzd(b1.linen)}<br>` + `Cleaning: ${nzd(b1.clean)}<br>` + `Pet: ${nzd(b1.pet)}<br>` + `Booking Fee (clamped): ${nzd(b1.fee)}<br>` + `Markup: ${nzd(markup1C)}<br>` + `Other: ${nzd(b1.other)}<br>` + `Total: ${nzd(total1)}<br><br>` + '<b>New Booking</b><br>' + `Rent: ${nzd(b2.rent)}<br>` + `Linen: ${nzd(b2.linen)}<br>` + `Cleaning: ${nzd(b2.clean)}<br>` + `Pet: ${nzd(b2.pet)}<br>` + `Booking Fee (clamped): ${nzd(b2.fee)}<br>` + `GEL: ${nzd(b2.gel)}<br>` + `Markup: ${nzd(markup2C)}<br>` + `Other: ${nzd(b2.other)}<br>` + `Total: ${nzd(total2)}<br><br>` + '<b>Outcome</b><br>' + `Difference: ${nzd(diff)}<br>` + `Collect (COD policy, negatives absorbed): ${nzd(codCollectC)}<br>`;
+
+      const nightlyRate = toCents(el('nightlyRate').value); const newCleaningRate = toCents(el('newCleaningRate').value); const newLinenRate = toCents(el('newLinenRate').value); const newBookingFee = toCents(el('newBookingFee').value || '40'); const newGelTotal = (el('newGelTotal').value.trim()!=='' ? toCents(el('newGelTotal').value) : Math.max(0, newN - origN) * GEL_PER_NIGHT_C);
+      const addNights = Math.max(0, newN - origN); const addRentC = nightlyRate * addNights; const serviceFeeNewC = Math.round((addRentC + newBookingFee + newGelTotal) * SERVICE_FEE_PCT); const extensionTotalC = addRentC + serviceFeeNewC + newCleaningRate + newLinenRate;
+
+      el('addNights').textContent = addNights; el('addRentSubtotal').textContent = nzd(addRentC); el('extServiceFee').textContent = nzd(serviceFeeNewC); el('extTotal').textContent = nzd(extensionTotalC);
+
+      el('htmlEXT').value = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + '<b>Extension</b><br>' + `Original: ${origStart || '-'} to ${origEnd || '-'} (${origN} nights)<br>` + `New: ${newStart || '-'} to ${newEnd || '-'} (${newN} nights)<br>` + `Additional nights: ${addNights}<br>` + `Nightly rent: ${nzd(nightlyRate)}<br>` + `Additional rent subtotal: ${nzd(addRentC)}<br>` + `GEL: ${nzd(newGelTotal)}<br>` + `Service fee (7.1%): ${nzd(serviceFeeNewC)}<br>` + `Cleaning (new): ${nzd(newCleaningRate)}<br>` + `Linen (new): ${nzd(newLinenRate)}<br>` + `<b>Total to collect:</b> ${nzd(extensionTotalC)}<br>`;
+
+      const feePerNightC = origN > 0 ? Math.round(b1.fee / origN) : 0; const removedGelC = removedN * GEL_PER_NIGHT_C; const ronMarkupBaseC = removedGelC + feePerNightC * removedN; const ronMarkupC = Math.round(ronMarkupBaseC * channel.markup); const ronServiceShareC = Math.round((removedGelC + feePerNightC * removedN) * SERVICE_FEE_PCT); const ronRefundC = removedGelC + ronMarkupC + ronServiceShareC;
+      el('ronGelRefund').textContent = nzd(removedGelC); el('ronMarkup').textContent = nzd(ronMarkupC); el('ronService').textContent = nzd(ronServiceShareC); el('ronTotal').textContent = nzd(ronRefundC);
+
+      const gstLineRON = waiveGST ? '<b>GST:</b> Waived (Bump)<br>' : (el('applyOwnerGST').checked ? '<b>GST:</b> Applied on rent for markup base<br>' : '<b>GST:</b> Not applied<br>');
+      el('htmlRON').value = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + '<b>Reduction of Nights (RON)</b><br>' + gstLineRON + `Original: ${origStart || '-'} to ${origEnd || '-'} (${origN} nights)<br>` + `New: ${newStart || '-'} to ${newEnd || '-'} (${newN} nights)<br>` + `Nights removed: ${removedN}<br>` + `GEL refund: ${nzd(removedGelC)}<br>` + `Markup on GEL + fee share: ${nzd(ronMarkupC)}<br>` + `Service fee share (7.1%): ${nzd(ronServiceShareC)}<br>` + `<b>Total refund:</b> ${nzd(ronRefundC)}<br>`;
     }
 
-    function calculate() {
-      const mode = document.getElementById('mode').value;
+    ['mode','channel','waiveGST','applyOwnerGST','ownerGSTRate','origStart','origEnd','newStart','newEnd','linenRate','extraLinen1','extraLinen2','linenIncl1','linenIncl2','rent1','linen1','clean1','pet1','fee1','other1','rent2','linen2','clean2','pet2','fee2','gel2','other2','feeMin','feeMax','feeMin2','feeMax2','nightlyRate','newCleaningRate','newLinenRate','newBookingFee','newGelTotal']
+      .forEach(id=>{ const node=el(id); if(node){ node.addEventListener('input', compute); node.addEventListener('change', compute);} });
 
-      // Booking 1 inputs
-      const rent1 = parseFloat(document.getElementById('rent1').value) || 0;
-      const linen1 = parseFloat(document.getElementById('linen1').value) || 0;
-      const cleaning1 = parseFloat(document.getElementById('cleaning1').value) || 0;
-      const nights1 = parseInt(document.getElementById('nights1').value) || 0;
-      const platform1 = document.getElementById('platform1').value;
+    el('codOptBtn1').addEventListener('click', ()=>{ el('codOpt1').classList.toggle('hidden'); });
+    el('codOptBtn2').addEventListener('click', ()=>{ el('codOpt2').classList.toggle('hidden'); });
+    el('extOptBtn').addEventListener('click', ()=>{ el('extOpt').classList.toggle('hidden'); });
 
-      // Booking 2 inputs
-      const rent2 = parseFloat(document.getElementById('rent2').value) || 0;
-      const linen2 = parseFloat(document.getElementById('linen2').value) || 0;
-      const cleaning2 = parseFloat(document.getElementById('cleaning2').value) || 0;
-      const nights2 = parseInt(document.getElementById('nights2').value) || 0;
-      const platform2 = document.getElementById('platform2').value;
+    el('mode').addEventListener('change', ()=>{ updateVisibility(); compute(); });
 
-      const bookingFee = parseFloat(document.getElementById('bookingFee').value) || 0;
-      const gstWaive = document.getElementById('gstWaive').value;
+    el('copyCOD').addEventListener('click', ()=>{ navigator.clipboard.writeText(el('htmlCOD').value); });
+    el('copyEXT').addEventListener('click', ()=>{ navigator.clipboard.writeText(el('htmlEXT').value); });
+    el('copyRON').addEventListener('click', ()=>{ navigator.clipboard.writeText(el('htmlRON').value); });
+    el('resetAll').addEventListener('click', ()=>{ document.querySelectorAll('input[type=text]').forEach(i=>i.value=''); document.querySelectorAll('input[type=checkbox]').forEach(i=>i.checked=false); compute(); });
 
-      // GEL calculation
-      const GEL1 = nights1 * 12;
-      const GEL2 = nights2 * 12;
-
-      // Subtotals with platform markup
-      let subtotal1 = (rent1 + linen1 + cleaning1 + bookingFee + GEL1);
-      subtotal1 += subtotal1 * getChannelMarkup(platform1);
-
-      let subtotal2 = (rent2 + linen2 + cleaning2 + bookingFee + GEL2);
-      subtotal2 += subtotal2 * getChannelMarkup(platform2);
-
-      let gst1 = gstWaive === 'no' ? subtotal1 * 0.15 : 0;
-      let gst2 = gstWaive === 'no' ? subtotal2 * 0.15 : 0;
-
-      const total1 = subtotal1 + gst1;
-      const total2 = subtotal2 + gst2;
-
-      let difference = total2 - total1;
-
-      const outputHTML = `
-Breakdown Itinerary Note\n
-Mode: ${mode}\n
---- Original Booking ---\n
-Platform: ${platform1}\n
-Rent: $${rent1}\n
-Linen: $${linen1}\n
-Cleaning: $${cleaning1}\n
-Nights: ${nights1}\n
-GEL: $${GEL1}\n
-Subtotal: $${subtotal1.toFixed(2)}\n
-GST: ${gstWaive === 'yes' ? 'Waived (Bump)' : '$' + gst1.toFixed(2)}\n
-Total: $${total1.toFixed(2)}\n
---- New Booking ---\n
-Platform: ${platform2}\n
-Rent: $${rent2}\n
-Linen: $${linen2}\n
-Cleaning: $${cleaning2}\n
-Nights: ${nights2}\n
-GEL: $${GEL2}\n
-Subtotal: $${subtotal2.toFixed(2)}\n
-GST: ${gstWaive === 'yes' ? 'Waived (Bump)' : '$' + gst2.toFixed(2)}\n
-Total: $${total2.toFixed(2)}\n
---- Difference ---\n
-Amount Difference: $${difference.toFixed(2)}
-      `;
-
-      document.getElementById('output').innerText = outputHTML;
-      document.getElementById('financeNote').value = outputHTML;
-    }
+    updateVisibility(); compute();
   </script>
 </body>
 </html>
