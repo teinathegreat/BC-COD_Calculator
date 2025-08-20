@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bachcare Rehouse/Date Change Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+  <div id="app" class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow"></div>
+
+  <script>
+    const app = document.getElementById("app");
+    app.innerHTML = `
+      <h1 class="text-2xl font-bold mb-4">Bachcare Calculator</h1>
+      <p class="mb-2">Modes: COD, RON, Extension</p>
+      <p class="mb-2">Includes: Channel markup, booking fee clamp, GEL, Linen rules</p>
+      <p class="mb-2">Options: Apply Owner GST, Waive GST (Bump)</p>
+      <p class="mb-2">Finance note output below</p>
+      <textarea class="w-full h-48 border rounded p-2 text-sm" readonly>
+<b>Breakdown Itinerary Note</b><br>
+<b>Mode:</b> COD<br>
+<b>Rent:</b> $1200<br>
+<b>Linen:</b> $100<br>
+<b>Cleaning:</b> $150<br>
+<b>Booking Fee:</b> $75<br>
+<b>GEL:</b> $48<br>
+<b>GST:</b> Waived (Bump)<br>
+<b>Total:</b> $1573
+      </textarea>
+    `;
+  </script>
+</body>
+</html>
