@@ -6,14 +6,16 @@
   <title>Bachcare Calculator</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f7f9fa; padding: 20px; }
-    .calculator-container { background: #fff; max-width: 800px; margin: auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .calculator-container { background: #fff; max-width: 900px; margin: auto; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     h1 { text-align: center; margin-bottom: 20px; }
     label { display: block; margin-top: 10px; font-weight: bold; }
     input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
     button { margin-top: 20px; padding: 10px; background: #0078d7; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
     button:hover { background: #005fa3; }
-    .output { margin-top: 20px; background: #f1f3f4; padding: 15px; border-radius: 8px; }
+    .output { margin-top: 20px; background: #f1f3f4; padding: 15px; border-radius: 8px; white-space: pre-line; }
     textarea { width: 100%; height: 200px; margin-top: 10px; }
+    .booking-section { border: 1px solid #ddd; padding: 15px; margin-top: 15px; border-radius: 8px; }
+    .booking-section h2 { margin-top: 0; font-size: 18px; }
   </style>
 </head>
 <body>
@@ -27,17 +29,53 @@
       <option value="EXT">Extension</option>
     </select>
 
-    <label for="rent">Rent ($)</label>
-    <input type="number" id="rent" />
+    <!-- Booking 1 -->
+    <div class="booking-section">
+      <h2>Original Booking</h2>
+      <label for="platform1">Platform</label>
+      <select id="platform1">
+        <option value="direct">Direct</option>
+        <option value="airbnb">Airbnb</option>
+        <option value="booking">Booking.com</option>
+        <option value="vrbo">VRBO</option>
+      </select>
 
-    <label for="linen">Linen ($)</label>
-    <input type="number" id="linen" value="0" />
+      <label for="rent1">Rent ($)</label>
+      <input type="number" id="rent1" />
 
-    <label for="cleaning">Cleaning ($)</label>
-    <input type="number" id="cleaning" value="0" />
+      <label for="linen1">Linen ($)</label>
+      <input type="number" id="linen1" value="0" />
 
-    <label for="nights">Nights</label>
-    <input type="number" id="nights" value="1" />
+      <label for="cleaning1">Cleaning ($)</label>
+      <input type="number" id="cleaning1" value="0" />
+
+      <label for="nights1">Nights</label>
+      <input type="number" id="nights1" value="1" />
+    </div>
+
+    <!-- Booking 2 -->
+    <div class="booking-section">
+      <h2>New Booking</h2>
+      <label for="platform2">Platform</label>
+      <select id="platform2">
+        <option value="direct">Direct</option>
+        <option value="airbnb">Airbnb</option>
+        <option value="booking">Booking.com</option>
+        <option value="vrbo">VRBO</option>
+      </select>
+
+      <label for="rent2">Rent ($)</label>
+      <input type="number" id="rent2" />
+
+      <label for="linen2">Linen ($)</label>
+      <input type="number" id="linen2" value="0" />
+
+      <label for="cleaning2">Cleaning ($)</label>
+      <input type="number" id="cleaning2" value="0" />
+
+      <label for="nights2">Nights</label>
+      <input type="number" id="nights2" value="1" />
+    </div>
 
     <label for="bookingFee">Booking Fee ($)</label>
     <input type="number" id="bookingFee" value="75" />
@@ -48,54 +86,91 @@
       <option value="no">No</option>
     </select>
 
-    <label for="channelMarkup">Channel Markup (%)</label>
-    <input type="number" id="channelMarkup" value="0" />
-
     <button onclick="calculate()">Calculate</button>
 
-    <div class="output" id="output"></div>
+    <div class="output" id="output">Fill in the fields and press Calculate to see the breakdown.</div>
     <label>Finance Note Output:</label>
     <textarea id="financeNote"></textarea>
   </div>
 
   <script>
+    function getChannelMarkup(platform) {
+      switch(platform) {
+        case 'airbnb': return 0.18; // 18%
+        case 'booking': return 0.15; // 15%
+        case 'vrbo': return 0.12; // 12%
+        default: return 0; // direct
+      }
+    }
+
     function calculate() {
       const mode = document.getElementById('mode').value;
-      const rent = parseFloat(document.getElementById('rent').value) || 0;
-      const linen = parseFloat(document.getElementById('linen').value) || 0;
-      const cleaning = parseFloat(document.getElementById('cleaning').value) || 0;
-      const nights = parseInt(document.getElementById('nights').value) || 0;
+
+      // Booking 1 inputs
+      const rent1 = parseFloat(document.getElementById('rent1').value) || 0;
+      const linen1 = parseFloat(document.getElementById('linen1').value) || 0;
+      const cleaning1 = parseFloat(document.getElementById('cleaning1').value) || 0;
+      const nights1 = parseInt(document.getElementById('nights1').value) || 0;
+      const platform1 = document.getElementById('platform1').value;
+
+      // Booking 2 inputs
+      const rent2 = parseFloat(document.getElementById('rent2').value) || 0;
+      const linen2 = parseFloat(document.getElementById('linen2').value) || 0;
+      const cleaning2 = parseFloat(document.getElementById('cleaning2').value) || 0;
+      const nights2 = parseInt(document.getElementById('nights2').value) || 0;
+      const platform2 = document.getElementById('platform2').value;
+
       const bookingFee = parseFloat(document.getElementById('bookingFee').value) || 0;
       const gstWaive = document.getElementById('gstWaive').value;
-      const channelMarkup = parseFloat(document.getElementById('channelMarkup').value) || 0;
 
-      const GEL = nights * 12;
+      // GEL calculation
+      const GEL1 = nights1 * 12;
+      const GEL2 = nights2 * 12;
 
-      let subtotal = rent + linen + cleaning + bookingFee + GEL;
-      subtotal += subtotal * (channelMarkup / 100);
+      // Subtotals with platform markup
+      let subtotal1 = (rent1 + linen1 + cleaning1 + bookingFee + GEL1);
+      subtotal1 += subtotal1 * getChannelMarkup(platform1);
 
-      let gst = 0;
-      if (gstWaive === 'no') {
-        gst = 0.15 * subtotal;
-      }
+      let subtotal2 = (rent2 + linen2 + cleaning2 + bookingFee + GEL2);
+      subtotal2 += subtotal2 * getChannelMarkup(platform2);
 
-      const total = subtotal + gst;
+      let gst1 = gstWaive === 'no' ? subtotal1 * 0.15 : 0;
+      let gst2 = gstWaive === 'no' ? subtotal2 * 0.15 : 0;
+
+      const total1 = subtotal1 + gst1;
+      const total2 = subtotal2 + gst2;
+
+      let difference = total2 - total1;
 
       const outputHTML = `
-        <b>Breakdown Itinerary Note</b><br>
-        <b>Mode:</b> ${mode}<br>
-        <b>Rent:</b> $${rent}<br>
-        <b>Linen:</b> $${linen}<br>
-        <b>Cleaning:</b> $${cleaning}<br>
-        <b>Booking Fee:</b> $${bookingFee}<br>
-        <b>GEL:</b> $${GEL}<br>
-        <b>Channel Markup:</b> ${channelMarkup}%<br>
-        <b>GST:</b> ${gstWaive === 'yes' ? 'Waived (Bump)' : '$' + gst.toFixed(2)}<br>
-        <b>Total:</b> $${total.toFixed(2)}
+Breakdown Itinerary Note\n
+Mode: ${mode}\n
+--- Original Booking ---\n
+Platform: ${platform1}\n
+Rent: $${rent1}\n
+Linen: $${linen1}\n
+Cleaning: $${cleaning1}\n
+Nights: ${nights1}\n
+GEL: $${GEL1}\n
+Subtotal: $${subtotal1.toFixed(2)}\n
+GST: ${gstWaive === 'yes' ? 'Waived (Bump)' : '$' + gst1.toFixed(2)}\n
+Total: $${total1.toFixed(2)}\n
+--- New Booking ---\n
+Platform: ${platform2}\n
+Rent: $${rent2}\n
+Linen: $${linen2}\n
+Cleaning: $${cleaning2}\n
+Nights: ${nights2}\n
+GEL: $${GEL2}\n
+Subtotal: $${subtotal2.toFixed(2)}\n
+GST: ${gstWaive === 'yes' ? 'Waived (Bump)' : '$' + gst2.toFixed(2)}\n
+Total: $${total2.toFixed(2)}\n
+--- Difference ---\n
+Amount Difference: $${difference.toFixed(2)}
       `;
 
-      document.getElementById('output').innerHTML = outputHTML;
-      document.getElementById('financeNote').value = outputHTML.replace(/<br>/g, "\n").replace(/<b>/g, '').replace(/<\/b>/g, '');
+      document.getElementById('output').innerText = outputHTML;
+      document.getElementById('financeNote').value = outputHTML;
     }
   </script>
 </body>
