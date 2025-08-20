@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator</title>
+  <title>Bachcare Calculator (Compiled, No Babel)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .card{background:#fff;border:1px solid #f1f5f9;border-radius:1rem;padding:1.25rem;box-shadow:0 1px 2px rgba(16,24,40,.04)}
@@ -103,11 +103,7 @@
 
       <section class="card">
         <h2 class="text-xl font-semibold mb-3">New Booking</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span><input type="text" id="clean2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
-          <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span><input type="text" id="linen2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
-        </div>
-        <div class="mt-4">
+        <div id="perNightBlock" class="mt-2">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold">Per‑night Rates (New Booking)</h3>
             <button id="genNights" type="button" class="px-3 py-1 rounded-xl border border-gray-300 bg-white hover:bg-gray-50">Generate from dates</button>
@@ -116,6 +112,10 @@
             <div id="nightlyGrid" class="grid gap-2"></div>
             <div class="row mt-2"><span class="text-gray-600">Rent (sum of nights)</span><span id="rent2Sum"></span></div>
           </div>
+        </div>
+        <div id="cleanLinenBlock" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span><input type="text" id="clean2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
+          <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span><input type="text" id="linen2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
         </div>
         <div>
           <button type="button" id="codOptBtn2" class="text-sm text-gray-700 underline underline-offset-2 mt-2">Add optional fields</button>
@@ -231,6 +231,13 @@
       });
     }
 
+    // Persist owner GST & markups locally (device/browser only)
+    const PREF_KEYS = ['ownerGSTRate','mkAirbnb','mkBcom','mkVrbo'];
+    function loadPrefs(){
+      PREF_KEYS.forEach(k=>{ const v = localStorage.getItem('bc_'+k); if(v!==null && el(k)) el(k).value = v; });
+    }
+    function savePref(id){ try{ localStorage.setItem('bc_'+id, el(id).value); }catch(e){} }
+
     function syncMarkupsToDropdown(){
       // Update dropdown values from editable fields
       const air = parseFloat(el('mkAirbnb').value||'0')/100;
@@ -300,7 +307,7 @@
       const feeMin2 = toCents(el('feeMin2')?.value), feeMax2 = toCents(el('feeMax2')?.value); if(!Number.isNaN(feeMin2)&&!Number.isNaN(feeMax2)) b2.fee = Math.min(Math.max(b2.fee, feeMin2), feeMax2);
       const gel2 = newN * GEL_PER_NIGHT_C; // auto
 
-      // Channel markup base: rent + owner GST on rent (if applied) + booking fee + GEL (for new booking only per earlier logic). We'll apply same structure to both for consistency.
+      // Channel markup base
       const ownerGST1C = applyOwnerGST ? Math.round(b1.rent * ownerGSTRate) : 0; const ownerGST2C = applyOwnerGST ? Math.round(b2.rent * ownerGSTRate) : 0;
       const markup1C = Math.round((b1.rent + ownerGST1C + b1.fee + gel1) * channel.markup);
       const markup2C = Math.round((b2.rent + ownerGST2C + b2.fee + gel2) * channel.markup);
@@ -333,23 +340,23 @@
         `Booking Fee (clamped): ${nzd(b2.fee)}<br>` + `Other: ${nzd(b2.other)}<br>` + `GEL: ${nzd(gel2)}<br>` + `Channel Markup: ${nzd(markup2C)}<br>` + `GST: ${waiveGST ? 'Waived' : nzd(gst2C)}<br>` + `Total: ${nzd(total2)}<br><br>` +
         '<b>Outcome</b><br>' + `Difference: ${nzd(diff)}<br>` + `Collect (COD policy, negatives absorbed): ${nzd(codCollectC)}<br>`;
 
-      // RON + EXT kept from prior version (not recalculated here to reduce scope)
+      // RON + EXT kept from prior version
       const feePerNightC = origN > 0 ? Math.round((toCents(el('fee1')?.value))/Math.max(1,origN)) : 0; const removedGelC = removedN * GEL_PER_NIGHT_C; const ronMarkupBaseC = removedGelC + feePerNightC * removedN; const ronMarkupC = Math.round(ronMarkupBaseC * channel.markup); const ronServiceShareC = Math.round((removedGelC + feePerNightC * removedN) * SERVICE_FEE_PCT); const ronRefundC = removedGelC + ronMarkupC + ronServiceShareC;
       el('ronGelRefund').textContent = nzd(removedGelC); el('ronMarkup').textContent = nzd(ronMarkupC); el('ronService').textContent = nzd(ronServiceShareC); el('ronTotal').textContent = nzd(ronRefundC);
       const gstLineRON = waiveGST ? '<b>GST:</b> Waived (Bump)<br>' : '<b>GST:</b> Applied on taxable (excludes GEL & channel markup)<br>';
       el('htmlRON').value = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + '<b>Reduction of Nights (RON)</b><br>' + gstLineRON + `Original: ${origStart || '-'} to ${origEnd || '-'} (${origN} nights)<br>` + `New: ${newStart || '-'} to ${newEnd || '-'} (${newN} nights)<br>` + `Nights removed: ${removedN}<br>` + `GEL refund: ${nzd(removedGelC)}<br>` + `Markup on GEL + fee share: ${nzd(ronMarkupC)}<br>` + `Service fee share (7.1%): ${nzd(ronServiceShareC)}<br>` + `<b>Total refund:</b> ${nzd(ronRefundC)}<br>`;
-
-      // Extension kept (uses prior logic)
     }
 
     // Listeners
     ['mode','channel','waiveGST','applyOwnerGST','ownerGSTRate','origStart','origEnd','newStart','newEnd','linen1','clean1','linen2','clean2','rent1','pet1','fee1','other1','pet2','fee2','other2','feeMin','feeMax','feeMin2','feeMax2']
       .forEach(id=>{ const node=el(id); if(node){ node.addEventListener('input', compute); node.addEventListener('change', compute);} });
 
+    // Persist when unlocking/adjusting
+    ['ownerGSTRate','mkAirbnb','mkBcom','mkVrbo'].forEach(id=>{ const node = el(id); if(node){ node.addEventListener('change', ()=>{ savePref(id); syncMarkupsToDropdown(); compute(); }); }});
+
     // Lock controls
     unlockField('gstLockBtn', [el('ownerGSTRate')]);
     unlockField('markupLockBtn', [el('mkAirbnb'), el('mkBcom'), el('mkVrbo')]);
-    ;['mkAirbnb','mkBcom','mkVrbo'].forEach(id=> el(id).addEventListener('change', ()=>{ syncMarkupsToDropdown(); compute(); }));
 
     // Nightly rates generation
     el('genNights').addEventListener('click', ()=>{ buildNightlyInputs(); compute(); });
@@ -365,7 +372,7 @@
     el('extOptBtn')?.addEventListener('click', ()=>{ el('extOpt').classList.toggle('hidden'); });
 
     // Init
-    updateVisibility(); syncMarkupsToDropdown(); compute();
+    loadPrefs(); updateVisibility(); syncMarkupsToDropdown(); compute();
   </script>
 </body>
 </html>
