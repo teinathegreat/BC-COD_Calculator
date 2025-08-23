@@ -17,6 +17,7 @@
     .row{display:flex;justify-content:space-between;align-items:center}
     .tile{background:#f8fafc;border:1px solid #f1f5f9;border-radius:1rem;padding:1rem}
     .mini{font-size:.8rem;color:#64748b}
+    .badge{display:inline-flex;align-items:center;gap:.5rem;background:#ecfeff;border:1px solid #a5f3fc;color:#0e7490;border-radius:9999px;padding:.25rem .6rem;font-size:.8rem;font-weight:600}
     .tab{padding:.5rem 1rem;border:1px solid #e2e8f0;border-bottom:none;border-top-left-radius:.75rem;border-top-right-radius:.75rem;background:#f8fafc;margin-right:.5rem;cursor:pointer}
     .tab.active{background:#fff;font-weight:600}
     .tabpanes{border:1px solid #e2e8f0;border-radius:0 1rem 1rem 1rem;overflow:hidden}
@@ -36,13 +37,6 @@
       <!-- Calculator Pane -->
       <div id="calcPane" class="p-4">
         <div class="mb-4 flex flex-wrap items-center gap-3">
-          <select id="mode" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
-            <option value="change">Change of Date (COD)</option>
-            <option value="ron">Reduction of Nights (RON)</option>
-            <option value="extension">Extension</option>
-            <option value="rehouse">Rehouse</option>
-          </select>
-
           <select id="channel" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
             <option value="direct|Bachcare Direct|0">Bachcare Direct</option>
             <option value="bcom|B.com|0.239" selected>B.com</option>
@@ -75,8 +69,7 @@
           </section>
         </div>
 
-        <!-- COD / Rehouse UI -->
-        <div id="codWrap" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">Original Booking</h2>
 
@@ -181,8 +174,11 @@
 
           <div class="lg:col-span-2">
             <div class="mt-6 card">
-              <h3 class="text-lg font-semibold mb-2">Outcome</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold">Outcome</h3>
+                <div>Scenario: <span id="scenarioBadge" class="badge">—</span></div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                 <div class="tile"><div class="text-sm text-gray-600">Original Total</div><div id="tile1" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">Original booking charges.</div></div>
                 <div class="tile"><div class="text-sm text-gray-600">New Total</div><div id="tile2" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">New booking charges.</div></div>
                 <div class="tile"><div class="text-sm text-gray-600" id="tile3label">Excess to Collect</div><div id="tile3" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500" id="tile3desc">Collect this amount</div></div>
@@ -200,36 +196,6 @@
               <p class="text-xs text-gray-500 mt-3">COD negatives are absorbed per policy.</p>
             </div>
           </div>
-        </div>
-
-        <!-- Extension (placeholder) -->
-        <div id="extWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <section class="card">
-            <h2 class="text-xl font-semibold mb-3">Extension Inputs</h2>
-            <p class="text-sm text-gray-500">Use main calculator for most scenarios. Extension note preview still available below.</p>
-          </section>
-          <section class="card">
-            <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
-            <textarea id="htmlEXT" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-64" readonly></textarea>
-            <button id="copyEXT" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
-            <div class="mini mt-4 mb-1">Preview</div>
-            <div id="previewEXT" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
-          </section>
-        </div>
-
-        <!-- RON (placeholder) -->
-        <div id="ronWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <section class="card">
-            <h2 class="text-xl font-semibold mb-3">RON Summary</h2>
-            <div class="row"><span class="text-gray-600">Nights removed</span><span id="nightsRemoved">0</span></div>
-          </section>
-          <section class="card">
-            <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
-            <textarea id="htmlRON" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-64" readonly></textarea>
-            <button id="copyRON" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
-            <div class="mini mt-4 mb-1">Preview</div>
-            <div id="previewRON" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
-          </section>
         </div>
 
         <p class="text-xs text-gray-500 mt-5">Tip: Enter numbers only (e.g. 120 or 120.50). Currency shown in NZD. Dates accept dd/mm/yyyy or yyyy-mm-dd.</p>
@@ -270,19 +236,13 @@
     function getDateVal(id) {
       const v = (el(id)?.value || "").trim();
       if (!v) return null;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {            // yyyy-mm-dd
-        const [y, m, d] = v.split("-").map(Number);
-        return new Date(Date.UTC(y, m - 1, d));
-      }
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {           // dd/mm/yyyy
-        const [d, m, y] = v.split("/").map(Number);
-        return new Date(Date.UTC(y, m - 1, d));
-      }
-      const tryD = new Date(v);
-      return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [y, m, d] = v.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d, m, y] = v.split("/").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+      const tryD = new Date(v); return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
     }
     const dtIso = (d) => d.toISOString().slice(0, 10);
     const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
+    const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
 
     // ---------- Constants ----------
     const GEL_PER_NIGHT_C = 1200;        // $12/night in cents
@@ -294,15 +254,6 @@
       const [key, label, mu] = el("channel").value.split("|");
       return { key, label, markup: parseFloat(mu) || 0 };
     }
-
-    function updateVisibility() {
-      const m = el("mode").value;
-      const showCod = (m === "change" || m === "rehouse");
-      el("codWrap").classList.toggle("hidden", !showCod);
-      el("extWrap").classList.toggle("hidden", m !== "extension");
-      el("ronWrap").classList.toggle("hidden", m !== "ron");
-    }
-
     function syncMarkupsToDropdown(){
       const air = parseFloat(el('mkAirbnb').value||'0')/100;
       const bc  = parseFloat(el('mkBcom').value||'0')/100;
@@ -357,16 +308,27 @@
       let ok = false;
       try { ok = document.execCommand("copy"); } catch (_) {}
       ta.setAttribute("readonly", "");
-      if (!ok && navigator.clipboard) {
-        navigator.clipboard.writeText(ta.value).catch(() => {});
-      }
+      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(ta.value).catch(() => {}); }
       alert("Breakdown copied to clipboard.");
+    }
+
+    // ---------- Scenario detection ----------
+    function detectScenario(os, oe, ns, ne, propOld, propNew) {
+      const hasBothProps = (propOld && propNew);
+      if (hasBothProps && propOld !== propNew) return { key: 'rehouse', label: 'Rehouse', gstWaived: true };
+
+      const origN = (os && oe) ? nightsBetween(os, oe) : 0;
+      const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
+      const overlap = overlaps(os, oe, ns, ne);
+
+      if (overlap && newN > origN) return { key: 'extension', label: 'Extension', gstWaived: false };
+      if (overlap && newN < origN) return { key: 'ron', label: 'Reduction of Nights', gstWaived: false };
+
+      return { key: 'change', label: 'Change of Date', gstWaived: false };
     }
 
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
-      updateVisibility();
-
       // Dates & nights
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
       const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
@@ -374,7 +336,6 @@
       const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
       el("origNights").textContent = origN;
       el("newNights").textContent  = newN;
-      el("nightsRemoved") && (el("nightsRemoved").textContent = Math.max(0, origN - newN));
 
       // Rebuild nightly grid ONLY if date strings changed
       if (rebuildDates) {
@@ -386,10 +347,13 @@
         }
       }
 
-      const mode = el("mode").value;
-      const isRehouse = mode === "rehouse";
-      const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0");
       const ch = currentChannel();
+      const propOld = (el("propIdOld")?.value || "").trim();
+      const propNew = (el("propIdNew")?.value || "").trim();
+      const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
+      el("scenarioBadge").textContent = scen.label;
+
+      const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0");
 
       // ORIGINAL booking
       const b1 = {
@@ -417,7 +381,8 @@
       el("fee2").value = (fee2 / 100).toFixed(2);
       const gel2 = newN * GEL_PER_NIGHT_C;
 
-      // Channel markup (owner GST on rent not applied in Rehouse)
+      // Channel markup (owner GST on rent not applied when GST is waived only for Rehouse)
+      const isRehouse = scen.key === 'rehouse';
       const ownerGST1C = isRehouse ? 0 : Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C = isRehouse ? 0 : Math.round(b2.rent * ownerGSTRate);
       const markup1C = Math.round((b1.rent + ownerGST1C + b1.fee + gel1) * ch.markup);
@@ -462,9 +427,9 @@
       const header =
         "<b>Breakdown Itinerary Note</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
-        `<b>Mode:</b> ${mode.toUpperCase()}${isRehouse ? " (GST Waived)" : ""}<br>`;
-      const oldId = (el("propIdOld")?.value || "").trim();
-      const newId = (el("propIdNew")?.value || "").trim();
+        `<b>Scenario:</b> ${scen.label}${isRehouse ? " (GST Waived)" : ""}<br>`;
+      const oldId = propOld;
+      const newId = propNew;
       const propLine = (isRehouse || oldId || newId)
         ? `<b>Original Property ID:</b> ${oldId || "-"}<br><b>New Property ID:</b> ${newId || "-"}<br>` : "";
       const add1 = b1.addAmt > 0 ? `${b1.addInfo || "Additional charge"}: ${nzd(b1.addAmt)}<br>` : "";
@@ -496,9 +461,8 @@
         `Difference: ${nzd(diff)}<br>` +
         `Collect (negatives absorbed per policy): ${nzd(Math.max(0, diff))}<br>`;
 
-      if (el("htmlCOD")) { el("htmlCOD").value = html; el("previewCOD").innerHTML = html; }
-      if (el("htmlEXT")) { el("htmlEXT").value = header + "<b>Extension</b><br>(Details calculated in the Extension tab.)"; el("previewEXT").innerHTML = el("htmlEXT").value; }
-      if (el("htmlRON")) { el("htmlRON").value = header + "<b>Reduction of Nights (RON)</b><br>" + `Nights removed: ${Math.max(0, origN - newN)}<br>`; el("previewRON").innerHTML = el("htmlRON").value; }
+      el("htmlCOD").value = html;
+      el("previewCOD").innerHTML = html;
     }
 
     // ---------- Tabs ----------
@@ -534,7 +498,6 @@
     (function init() {
       attachCalendars();
       syncMarkupsToDropdown();
-      updateVisibility();
 
       // Inputs that recompute WITHOUT rebuilding nightly grid
       ["channel","ownerGSTRate","linen1","clean1","rent1","fee1","addInfo1","addAmt1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew"]
@@ -544,18 +507,8 @@
       ["origStart","origEnd","newStart","newEnd"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
 
-      // Settings -> Channel dropdown sync
-      ['mkAirbnb','mkBcom','mkVrbo'].forEach(id=>{
-        const n = el(id); if(n){ n.addEventListener('change', ()=>{ syncMarkupsToDropdown(); compute(false); }); }
-      });
-
-      // Mode change
-      el("mode").addEventListener("change", () => compute(false));
-
-      // Copy buttons
-      if (el("copyCOD")) el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
-      if (el("copyEXT")) el("copyEXT").addEventListener("click", () => robustCopy("htmlEXT"));
-      if (el("copyRON")) el("copyRON").addEventListener("click", () => robustCopy("htmlRON"));
+      // Copy button
+      el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
 
       // First run
       compute(true);
