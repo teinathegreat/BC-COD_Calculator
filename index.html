@@ -65,7 +65,7 @@
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">Original Booking</h2>
             <!-- Rehouse: Original Property ID -->
-            <div id="rehouseOld" class="hidden mb-3">
+            <div id="rehouseOld" class="mb-3">
               <label class="block"><span class="text-sm font-medium text-gray-700">Original Property ID</span><input type="text" id="propIdOld" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. BC1234"></label>
             </div>
             <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span><input type="text" id="rent1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00"></label>
@@ -89,12 +89,13 @@
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">New Booking</h2>
             <!-- Rehouse: New Property ID -->
-            <div id="rehouseNew" class="hidden mb-3">
+            <div id="rehouseNew" class="mb-3">
               <label class="block"><span class="text-sm font-medium text-gray-700">New Property ID</span><input type="text" id="propIdNew" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. BC5678"></label>
             </div>
             <!-- Per‑night Rates ALWAYS visible & auto-generated from dates -->
             <div id="perNightBlock" class="mt-2">
               <h3 class="font-semibold">Per‑night Rates (New Booking)</h3>
+              <div id="nightlyHint" class="mini">Set <b>New Start</b> and <b>New End</b> dates to generate one input per night.</div>
               <div id="nightlyWrap" class="mt-2">
                 <div id="nightlyGrid" class="grid gap-2"></div>
                 <div class="row mt-2"><span class="text-gray-600">Rent (sum of nights)</span><span id="rent2Sum"></span></div>
@@ -225,9 +226,8 @@
       el('codWrap').classList.toggle('hidden', !showCod);
       el('extWrap').classList.toggle('hidden', m!=='extension');
       el('ronWrap').classList.toggle('hidden', m!=='ron');
-      // Rehouse property IDs visibility (prominent positions)
-      el('rehouseOld').classList.toggle('hidden', m!=='rehouse');
-      el('rehouseNew').classList.toggle('hidden', m!=='rehouse');
+      // Property IDs now always visible but only required for Rehouse
+      const oldLabel = document.querySelector('label[for="propIdOldLabel"]') || null;
     }
 
     function syncMarkupsToDropdown(){
