@@ -81,9 +81,17 @@
               <label class="block"><span class="text-sm font-medium text-gray-700">Additional Charge Amount</span><input type="text" id="addAmt1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
             </div>
             <div class="border-t border-gray-100 my-2"></div>
-            <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto1"></span></div>
-            <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst1"></span></div>
-            <div class="row"><span class="text-gray-600">Original Booking Total</span><span id="total1" class="font-semibold"></span></div>
+            <div class="space-y-1 text-sm">
+              <div class="row"><span class="text-gray-600">Rent</span><span id="obRent"></span></div>
+              <div class="row"><span class="text-gray-600">Linen</span><span id="obLinen"></span></div>
+              <div class="row"><span class="text-gray-600">Cleaning</span><span id="obClean"></span></div>
+              <div class="row"><span class="text-gray-600">Booking Fee</span><span id="obFee"></span></div>
+              <div class="row"><span class="text-gray-600">Additional Charges</span><span id="obAdd"></span></div>
+              <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto1"></span></div>
+              <div class="row"><span class="text-gray-600">Channel Markup</span><span id="obMarkup"></span></div>
+              <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst1"></span></div>
+            </div>
+            <div class="row mt-2"><span class="text-gray-600">Original Booking Total</span><span id="total1" class="font-semibold"></span></div>
           </section>
 
           <section class="card">
@@ -114,9 +122,17 @@
             </div>
 
             <div class="border-t border-gray-100 my-2"></div>
-            <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2"></span></div>
-            <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst2"></span></div>
-            <div class="row"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold"></span></div>
+            <div class="space-y-1 text-sm">
+              <div class="row"><span class="text-gray-600">Rent (sum nights)</span><span id="nbRent"></span></div>
+              <div class="row"><span class="text-gray-600">Linen</span><span id="nbLinen"></span></div>
+              <div class="row"><span class="text-gray-600">Cleaning</span><span id="nbClean"></span></div>
+              <div class="row"><span class="text-gray-600">Booking Fee (auto)</span><span id="nbFee"></span></div>
+              <div class="row"><span class="text-gray-600">Additional Charges</span><span id="nbAdd"></span></div>
+              <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2"></span></div>
+              <div class="row"><span class="text-gray-600">Channel Markup</span><span id="nbMarkup"></span></div>
+              <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst2"></span></div>
+            </div>
+            <div class="row mt-2"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold"></span></div>
           </section>
 
           <div class="lg:col-span-2">
@@ -216,6 +232,9 @@
     // Track last date range to avoid rebuilding nightly inputs on every keystroke
     let lastNewStart = '', lastNewEnd = '';
 
+    // Track last date range to avoid rebuilding nightly inputs on every keystroke
+    let lastNewStart = '', lastNewEnd = '';
+
     const el = (id)=>document.getElementById(id);
     const parseDate = (s)=> s ? new Date(s) : null;
     const nights = (a,b)=>{ const A=parseDate(a), B=parseDate(b); if(!A||!B) return 0; return Math.max(0, Math.round((B-A)/(1000*60*60*24))); };
@@ -260,7 +279,7 @@
         cur = new Date(cur.getTime()+dayMs);
       }
       // attach listeners to recompute when any nightly rate changes
-      grid.querySelectorAll('.nightRate').forEach(inp=>{ inp.addEventListener('input', compute); inp.addEventListener('change', compute); });
+      grid.querySelectorAll('.nightRate').forEach(inp=>{ inp.addEventListener('input', ()=>{ sumNightly(); compute(false); }); inp.addEventListener('change', ()=>{ sumNightly(); compute(false); }); });
     }
 
     function sumNightly(){
@@ -344,6 +363,20 @@
       el('gst2').textContent = isRehouse ? 'Waived (Rehouse)' : nzd(gst2C);
       el('total1').textContent = nzd(total1); el('total2').textContent = nzd(total2); el('tile1').textContent = nzd(total1); el('tile2').textContent = nzd(total2);
       el('tile3').textContent = nzd(Math.abs(diff)); el('tile3label').textContent = diff>=0 ? 'Excess to Collect' : 'Refund to Guest'; el('tile3desc').textContent = diff>=0 ? 'Collect this amount' : 'Refund due (policy may absorb)';
+      // Per-card breakdowns
+      el('obRent').textContent = nzd(b1.rent);
+      el('obLinen').textContent = nzd(b1.linen);
+      el('obClean').textContent = nzd(b1.clean);
+      el('obFee').textContent = nzd(b1.fee);
+      el('obAdd').textContent = nzd(b1.addAmt);
+      el('obMarkup').textContent = nzd(markup1C);
+
+      el('nbRent').textContent = nzd(b2.rent);
+      el('nbLinen').textContent = nzd(b2.linen);
+      el('nbClean').textContent = nzd(b2.clean);
+      el('nbFee').textContent = nzd(b2.fee);
+      el('nbAdd').textContent = nzd(b2.addAmt);
+      el('nbMarkup').textContent = nzd(markup2C);
 
       // Finance Breakdown
       const header = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + `<b>Mode:</b> ${mode.toUpperCase()}${isRehouse? ' (GST Waived)':''}<br>`;
