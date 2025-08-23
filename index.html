@@ -617,4 +617,138 @@
       el("tile1").textContent = nzd(total1);
       el("tile2").textContent = nzd(total2);
       el("tile3").textContent = nzd(Math.abs(diff));
-      el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund
+      el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
+      el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
+
+      // ---- Finance Breakdown (HTML + Preview) ----
+      const header =
+        "<b>Booking Breakdown</b><br>" +
+        `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
+        `<b>Scenario:</b> ${scen.label}<br><br>`;
+
+      const originalHtml = (ch.key === 'direct')
+        ? "<b>Original Booking</b><br>" +
+          `Rent: ${nzd(b1.rent)}<br>` +
+          // no GST line for original per policy
+          `Linen: ${nzd(b1.linen)}<br>` +
+          `Cleaning: ${nzd(b1.clean)}<br>` +
+          `Booking Fee: ${nzd(b1.fee)}<br>` +
+          `Total: ${nzd(total1)}<br><br>`
+        : "<b>Original Booking</b><br>" +
+          `Total Holiday Cost: ${nzd(total1)}<br><br>`;
+
+      const newHtml =
+        "<b>New Booking</b><br>" +
+        `Rent (sum nights): ${nzd(b2.rent)}<br>` +
+        `GEL: ${nzd(gel2)}<br>` +
+        (includeOwnerGST ? `Owner GST Total: ${nzd(ownerGST2C)}<br>` : "") +
+        `Linen: ${nzd(b2.linen)}<br>` +
+        `Cleaning: ${nzd(b2.clean)}<br>` +
+        `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` +
+        (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) +
+        `Total: ${nzd(total2)}<br><br>`;
+
+      const outcomeHtml = diff >= 0
+        ? `Amount to charge guest: ${nzd(diff)}<br>`
+        : `Amount to refund guest: ${nzd(-diff)}<br>`;
+
+      const html = header + originalHtml + newHtml + "<b>Outcome</b><br>" + outcomeHtml;
+      el("htmlCOD").value = html;
+      el("previewCOD").innerHTML = html;
+
+      // ---- Direct-only pre-drafted email (reworded; 24h validity) ----
+      if (direct) {
+        // For email: Original Rent already includes GEL; add Owner GST if included
+        const rentOriginalEmailC = b1.rent + (includeOwnerGST ? ownerGST1C : 0);
+        const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
+
+        const phrase = scen.label.toLowerCase(); // "change of date", "reduction of nights", etc.
+
+        const email =
+`Subject: Updated Booking Quote – ${ch.label}
+
+Hi there,
+
+Thank you for your ${phrase} request. Please find a clear comparison of your original booking and the updated booking below.
+This quote is valid for 24 hours. Please give us a call to confirm so we can process the ${diff>=0?'payment':'refund'} accordingly.
+
+— Original Booking —
+• Rent: ${nzd(rentOriginalEmailC)}
+• Linen: ${nzd(b1.linen)}
+• Cleaning: ${nzd(b1.clean)}
+• Booking Fee: ${nzd(b1.fee)}
+• Original Total: ${nzd(total1)}
+
+— New Booking —
+• Rent: ${nzd(rentNewEmailC)}
+• Linen: ${nzd(b2.linen)}
+• Cleaning: ${nzd(b2.clean)}
+• Booking Fee: ${nzd(b2.fee)}${amendTotalC > 0 ? `\n• Amendment Fee: ${nzd(amendTotalC)}` : `\n• Amendment Fee: Waived`}
+• New Total: ${nzd(total2)}
+
+${diff >= 0
+  ? `Amount to charge: ${nzd(diff)} once you confirm by phone.`
+  : `Amount to refund: ${nzd(-diff)} once you confirm by phone.`}
+
+Kind regards,
+Bachcare Team`;
+        el("guestEmail").value = email;
+      } else {
+        el("guestEmail").value = "";
+      }
+
+      // Reflect fee2 read-only
+      el("fee2").value = (b2.fee / 100).toFixed(2);
+    }
+
+    // ---------- Tabs ----------
+    document.querySelectorAll('.tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.getAttribute('data-tab');
+        document.getElementById('calcPane').classList.add('hidden');
+        document.getElementById('settingsPane').classList.add('hidden');
+        document.getElementById(target).classList.remove('hidden');
+      });
+    });
+
+    // ---------- Calendars (Flatpickr) ----------
+    function attachCalendars() {
+      const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
+      if (window.flatpickr) {
+        flatpickr("#origStart", opts);
+        flatpickr("#origEnd",   opts);
+        flatpickr("#newStart",  opts);
+        flatpickr("#newEnd",    opts);
+      }
+    }
+
+    // ---------- Init ----------
+    (function init() {
+      attachCalendars();
+      syncMarkupsToDropdown();
+
+      // Inputs that recompute WITHOUT rebuilding nightly grid
+      ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","includeOwnerGST"]
+        .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
+
+      // Dates trigger recompute WITH nightly grid rebuild
+      ["origStart","origEnd","newStart","newEnd"]
+        .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
+
+      // Modal close
+      el('dmClose')?.addEventListener('click', ()=> el('directModal').classList.add('hidden'));
+      el('d30Close')?.addEventListener('click', ()=> el('direct30Modal').classList.add('hidden'));
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal')?.classList.add('hidden'); el('direct30Modal')?.classList.add('hidden'); }});
+
+      // Copy buttons
+      el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
+      el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
+
+      // First run
+      compute(true);
+    })();
+  </script>
+</body>
+</html>
