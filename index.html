@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Compiled, No Babel)</title>
+  <title>Bachcare Calculator (Standalone)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .card{background:#fff;border:1px solid #f1f5f9;border-radius:1rem;padding:1.25rem;box-shadow:0 1px 2px rgba(16,24,40,.04)}
     .row{display:flex;justify-content:space-between;align-items:center}
     .tile{background:#f8fafc;border:1px solid #f1f5f9;border-radius:1rem;padding:1rem}
-    .lock-btn{cursor:pointer; font-size:0.95rem;}
-    .locked{opacity:0.6; pointer-events:none}
     .mini{font-size:.8rem;color:#64748b}
+    .tab{padding:.5rem 1rem;border:1px solid #e2e8f0;border-bottom:none;border-top-left-radius:.75rem;border-top-right-radius:.75rem;background:#f8fafc;margin-right:.5rem;cursor:pointer}
+    .tab.active{background:#fff;font-weight:600}
+    .tabpanes{border:1px solid #e2e8f0;border-radius:0 1rem 1rem 1rem;overflow:hidden}
     .grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}
   </style>
 </head>
@@ -19,194 +20,210 @@
   <div class="min-h-screen w-full max-w-6xl mx-auto p-6">
     <h1 class="text-3xl font-bold tracking-tight mb-4">Rehouse / Date Change, RON & Extension Calculator (NZD)</h1>
 
-    <div class="mb-4 flex flex-wrap items-center gap-3">
-      <select id="mode" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
-        <option value="change">Change of Date (COD)</option>
-        <option value="ron">Reduction of Nights (RON)</option>
-        <option value="extension">Extension</option>
-      </select>
-
-      <select id="channel" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
-        <option value="direct|Bachcare Direct|0">Bachcare Direct</option>
-        <option value="bcom|B.com|0.239" selected>B.com</option>
-        <option value="vrbo|VRBO|0.202">VRBO</option>
-        <option value="airbnb|Airbnb|0.255">Airbnb</option>
-      </select>
-
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="waiveGST"> Waive GST for rehouse (Bump)</label>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="applyOwnerGST"> Apply Owner GST on Rent (markup base)</label>
-
-      <!-- Owner GST with lock -->
-      <label class="block">
-        <span class="text-sm font-medium text-gray-700 flex items-center gap-2">Owner GST Rate
-          <button id="gstLockBtn" type="button" class="lock-btn" title="Unlock to edit">🔒</button>
-        </span>
-        <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2" disabled>
-        <div class="mini">Locked. Click 🔒 and enter password to edit.</div>
-      </label>
-
-      <!-- Channel markups with lock -->
-      <section class="card">
-        <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Channel Markups</span>
-          <button id="markupLockBtn" type="button" class="lock-btn" title="Unlock to edit">🔒</button>
-        </div>
-        <div class="grid grid-cols-3 gap-2">
-          <label class="text-sm">Airbnb %<input type="text" id="mkAirbnb" value="25.5" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1" disabled></label>
-          <label class="text-sm">B.com %<input type="text" id="mkBcom" value="23.9" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1" disabled></label>
-          <label class="text-sm">VRBO %<input type="text" id="mkVrbo" value="20.2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1" disabled></label>
-        </div>
-        <div class="mini">These control the channel dropdown options.</div>
-      </section>
+    <!-- Tabs -->
+    <div class="flex mb-2">
+      <button class="tab active" data-tab="calcPane">Calculator</button>
+      <button class="tab" data-tab="settingsPane">Settings</button>
     </div>
 
-    <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">Original Dates</h2>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Start</span><input type="date" id="origStart" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">End</span><input type="date" id="origEnd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
-        <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights"></span></div>
-      </section>
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">New Dates</h2>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Start</span><input type="date" id="newStart" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">End</span><input type="date" id="newEnd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
-        <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="newNights"></span></div>
-      </section>
-    </div>
+    <div class="tabpanes bg-white rounded-xl">
+      <!-- Calculator Pane -->
+      <div id="calcPane" class="p-4">
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <select id="mode" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
+            <option value="change">Change of Date (COD)</option>
+            <option value="ron">Reduction of Nights (RON)</option>
+            <option value="extension">Extension</option>
+            <option value="rehouse">Rehouse</option>
+          </select>
 
-    <!-- COD UI -->
-    <div id="codWrap" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">Original Booking</h2>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span><input type="text" id="rent1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00"></label>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span><input type="text" id="linen1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
-          <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span><input type="text" id="clean1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
+          <select id="channel" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
+            <option value="direct|Bachcare Direct|0">Bachcare Direct</option>
+            <option value="bcom|B.com|0.239" selected>B.com</option>
+            <option value="vrbo|VRBO|0.202">VRBO</option>
+            <option value="airbnb|Airbnb|0.255">Airbnb</option>
+          </select>
         </div>
-        <div>
-          <button type="button" id="codOptBtn1" class="text-sm text-gray-700 underline underline-offset-2">Add optional fields</button>
-          <div id="codOpt1" class="mt-3 hidden">
-            <label class="block"><span class="text-sm font-medium text-gray-700">Pet (optional)</span><input type="text" id="pet1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
-            <div class="grid grid-cols-3 gap-3">
-              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee</span><input type="text" id="fee1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
-              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Min</span><input type="text" id="feeMin" value="28.75" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
-              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Max</span><input type="text" id="feeMax" value="999.00" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+
+        <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">Original Dates</h2>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Start</span><input type="date" id="origStart" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            <label class="block"><span class="text-sm font-medium text-gray-700">End</span><input type="date" id="origEnd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights"></span></div>
+          </section>
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">New Dates</h2>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Start</span><input type="date" id="newStart" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            <label class="block"><span class="text-sm font-medium text-gray-700">End</span><input type="date" id="newEnd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="newNights"></span></div>
+          </section>
+        </div>
+
+        <!-- COD / Rehouse UI -->
+        <div id="codWrap" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">Original Booking</h2>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span><input type="text" id="rent1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00"></label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span><input type="text" id="linen1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span><input type="text" id="clean1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
             </div>
-            <label class="block"><span class="text-sm font-medium text-gray-700">Other (optional)</span><input type="text" id="other1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
-          </div>
-        </div>
-        <div class="border-t border-gray-100 my-2"></div>
-        <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto1"></span></div>
-        <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst1"></span></div>
-        <div class="row"><span class="text-gray-600">Original Booking Total</span><span id="total1" class="font-semibold"></span></div>
-      </section>
-
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">New Booking</h2>
-        <div id="perNightBlock" class="mt-2">
-          <div class="flex items-center justify-between">
-            <h3 class="font-semibold">Per‑night Rates (New Booking)</h3>
-            <button id="genNights" type="button" class="px-3 py-1 rounded-xl border border-gray-300 bg-white hover:bg-gray-50">Generate from dates</button>
-          </div>
-          <div id="nightlyWrap" class="mt-2 hidden">
-            <div id="nightlyGrid" class="grid gap-2"></div>
-            <div class="row mt-2"><span class="text-gray-600">Rent (sum of nights)</span><span id="rent2Sum"></span></div>
-          </div>
-        </div>
-        <div id="cleanLinenBlock" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-          <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span><input type="text" id="clean2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
-          <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span><input type="text" id="linen2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
-        </div>
-        <div>
-          <button type="button" id="codOptBtn2" class="text-sm text-gray-700 underline underline-offset-2 mt-2">Add optional fields</button>
-          <div id="codOpt2" class="mt-3 hidden">
-            <label class="block"><span class="text-sm font-medium text-gray-700">Pet (optional)</span><input type="text" id="pet2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
-            <div class="grid grid-cols-3 gap-3">
-              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee</span><input type="text" id="fee2" value="40" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
-              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Min</span><input type="text" id="feeMin2" value="28.75" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
-              <label class="block"><span class="text-sm font-medium text-gray-700">Fee Max</span><input type="text" id="feeMax2" value="999.00" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2"></label>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee (enter known)</span><input type="text" id="fee1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Additional Charge Info</span><input type="text" id="addInfo1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. Extra guest"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Additional Charge Amount</span><input type="text" id="addAmt1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
             </div>
-            <label class="block"><span class="text-sm font-medium text-gray-700">Other (optional)</span><input type="text" id="other2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
-          </div>
-        </div>
-        <div class="border-t border-gray-100 my-2"></div>
-        <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2"></span></div>
-        <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst2"></span></div>
-        <div class="row"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold"></span></div>
-      </section>
+            <div class="border-t border-gray-100 my-2"></div>
+            <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto1"></span></div>
+            <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst1"></span></div>
+            <div class="row"><span class="text-gray-600">Original Booking Total</span><span id="total1" class="font-semibold"></span></div>
+          </section>
 
-      <div class="lg:col-span-2">
-        <div class="mt-6 card">
-          <h3 class="text-lg font-semibold mb-2">Outcome</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div class="tile"><div class="text-sm text-gray-600">Original Total</div><div id="tile1" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">Original booking charges.</div></div>
-            <div class="tile"><div class="text-sm text-gray-600">New Total</div><div id="tile2" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">New booking charges.</div></div>
-            <div class="tile"><div class="text-sm text-gray-600" id="tile3label">Excess to Collect</div><div id="tile3" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500" id="tile3desc">Collect this amount</div></div>
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">New Booking</h2>
+            <div id="perNightBlock" class="mt-2">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold">Per‑night Rates (New Booking)</h3>
+                <button id="genNights" type="button" class="px-3 py-1 rounded-xl border border-gray-300 bg-white hover:bg-gray-50">Generate from dates</button>
+              </div>
+              <div id="nightlyWrap" class="mt-2 hidden">
+                <div id="nightlyGrid" class="grid gap-2"></div>
+                <div class="row mt-2"><span class="text-gray-600">Rent (sum of nights)</span><span id="rent2Sum"></span></div>
+              </div>
+            </div>
+            <div id="cleanLinenBlock" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span><input type="text" id="clean2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span><input type="text" id="linen2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required"></label>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee (auto, capped $299)</span><input type="text" id="fee2" class="mt-1 w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2" placeholder="auto" readonly></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Additional Charge Info</span><input type="text" id="addInfo2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. Extra guest"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Additional Charge Amount</span><input type="text" id="addAmt2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="0.00"></label>
+            </div>
+
+            <!-- Rehouse-only fields -->
+            <div id="rehouseFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Original Property ID</span><input type="text" id="propIdOld" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. BC1234"></label>
+              <label class="block"><span class="text-sm font-medium text-gray-700">New Property ID</span><input type="text" id="propIdNew" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. BC5678"></label>
+            </div>
+
+            <div class="border-t border-gray-100 my-2"></div>
+            <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2"></span></div>
+            <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst2"></span></div>
+            <div class="row"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold"></span></div>
+          </section>
+
+          <div class="lg:col-span-2">
+            <div class="mt-6 card">
+              <h3 class="text-lg font-semibold mb-2">Outcome</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="tile"><div class="text-sm text-gray-600">Original Total</div><div id="tile1" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">Original booking charges.</div></div>
+                <div class="tile"><div class="text-sm text-gray-600">New Total</div><div id="tile2" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">New booking charges.</div></div>
+                <div class="tile"><div class="text-sm text-gray-600" id="tile3label">Excess to Collect</div><div id="tile3" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500" id="tile3desc">Collect this amount</div></div>
+              </div>
+              <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <section class="card">
+                  <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <textarea id="htmlCOD" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
+                      <button id="copyCOD" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
+                    </div>
+                    <div>
+                      <div class="mini mb-1">Preview</div>
+                      <div id="previewCOD" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
+                    </div>
+                  </div>
+                </section>
+                <div class="flex items-end"><button id="resetAll" class="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 transition">Reset</button></div>
+              </div>
+              <p class="text-xs text-gray-500 mt-3">COD negatives are absorbed per policy.</p>
+            </div>
           </div>
-          <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <section class="card">
-              <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
-              <textarea id="htmlCOD" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
-              <button id="copyCOD" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
-            </section>
-            <div class="flex items-end"><button id="resetAll" class="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 transition">Reset</button></div>
-          </div>
-          <p class="text-xs text-gray-500 mt-3">COD negatives are absorbed per policy.</p>
         </div>
+
+        <!-- Extension UI -->
+        <div id="extWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">Extension Inputs</h2>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Nightly Rent Only</span><input type="text" id="nightlyRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 180.00"></label>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (new)</span><input type="text" id="newCleaningRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 150.00"></label>
+            <label class="block"><span class="text-sm font-medium text-gray-700">Linen (new)</span><input type="text" id="newLinenRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 120.00"></label>
+            <div class="border-t border-gray-100 my-2"></div>
+            <div class="row"><span class="text-gray-600">Additional Nights</span><span id="addNights"></span></div>
+            <div class="row"><span class="text-gray-600">Additional Rent Subtotal</span><span id="addRentSubtotal"></span></div>
+            <div class="row"><span class="text-gray-600">Service Fee (7.1%)</span><span id="extServiceFee"></span></div>
+            <div class="row"><span class="text-gray-600">Total to Collect</span><span id="extTotal" class="font-semibold"></span></div>
+          </section>
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <textarea id="htmlEXT" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
+                <button id="copyEXT" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
+              </div>
+              <div>
+                <div class="mini mb-1">Preview</div>
+                <div id="previewEXT" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- RON UI -->
+        <div id="ronWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">RON Summary</h2>
+            <div class="row"><span class="text-gray-600">Nights removed</span><span id="nightsRemoved"></span></div>
+            <div class="row"><span class="text-gray-600">GEL to refund</span><span id="ronGelRefund"></span></div>
+            <div class="row"><span class="text-gray-600">Markup on GEL + fee share</span><span id="ronMarkup"></span></div>
+            <div class="row"><span class="text-gray-600">Service fee share (7.1%)</span><span id="ronService"></span></div>
+            <div class="row"><span class="text-gray-600">Total refund (RON)</span><span id="ronTotal" class="font-semibold"></span></div>
+          </section>
+          <section class="card">
+            <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <textarea id="htmlRON" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
+                <button id="copyRON" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
+              </div>
+              <div>
+                <div class="mini mb-1">Preview</div>
+                <div id="previewRON" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-5">Tip: Enter numbers only (e.g. 120 or 120.50). Currency shown in NZD.</p>
+      </div>
+
+      <!-- Settings Pane (Owner GST + Channel Markups hidden behind tab) -->
+      <div id="settingsPane" class="p-4 hidden">
+        <section class="card mb-4">
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Owner GST Rate</span></div>
+          <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
+          <div class="mini">This is used for markup base calculations when applicable (not for Rehouse where GST is waived).</div>
+        </section>
+        <section class="card">
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Channel Markups</span></div>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="text-sm">Airbnb %<input type="text" id="mkAirbnb" value="25.5" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
+            <label class="text-sm">B.com %<input type="text" id="mkBcom" value="23.9" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
+            <label class="text-sm">VRBO %<input type="text" id="mkVrbo" value="20.2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
+          </div>
+          <div class="mini">Changing these updates the Channel dropdown on the Calculator tab.</div>
+        </section>
       </div>
     </div>
-
-    <!-- Extension UI (kept, but not the focus of this change) -->
-    <div id="extWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">Extension Inputs</h2>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Nightly Rent Only</span><input type="text" id="nightlyRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 180.00"></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (new)</span><input type="text" id="newCleaningRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 150.00"></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Linen (new)</span><input type="text" id="newLinenRate" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 120.00"></label>
-        <div>
-          <button type="button" id="extOptBtn" class="text-sm text-gray-700 underline underline-offset-2">Add optional fields</button>
-          <div id="extOpt" class="mt-3 hidden">
-            <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee (new)</span><input type="text" id="newBookingFee" value="40" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 40.00"></label>
-          </div>
-        </div>
-        <div class="border-t border-gray-100 my-2"></div>
-        <div class="row"><span class="text-gray-600">Additional Nights</span><span id="addNights"></span></div>
-        <div class="row"><span class="text-gray-600">Additional Rent Subtotal</span><span id="addRentSubtotal"></span></div>
-        <div class="row"><span class="text-gray-600">Service Fee (7.1%)</span><span id="extServiceFee"></span></div>
-        <div class="row"><span class="text-gray-600">Total to Collect</span><span id="extTotal" class="font-semibold"></span></div>
-      </section>
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
-        <textarea id="htmlEXT" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
-        <button id="copyEXT" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
-      </section>
-    </div>
-
-    <!-- RON UI -->
-    <div id="ronWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">RON Summary</h2>
-        <div class="row"><span class="text-gray-600">Nights removed</span><span id="nightsRemoved"></span></div>
-        <div class="row"><span class="text-gray-600">GEL to refund</span><span id="ronGelRefund"></span></div>
-        <div class="row"><span class="text-gray-600">Markup on GEL + fee share</span><span id="ronMarkup"></span></div>
-        <div class="row"><span class="text-gray-600">Service fee share (7.1%)</span><span id="ronService"></span></div>
-        <div class="row"><span class="text-gray-600">Total refund (RON)</span><span id="ronTotal" class="font-semibold"></span></div>
-      </section>
-      <section class="card">
-        <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
-        <textarea id="htmlRON" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-48" readonly></textarea>
-        <button id="copyRON" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
-      </section>
-    </div>
-
-    <p class="text-xs text-gray-500 mt-5">Tip: Enter numbers only (e.g. 120 or 120.50). Currency shown in NZD.</p>
   </div>
 
   <script>
     // Helpers
     const toCents = (v) => { const n = typeof v === 'number' ? v : parseFloat(String(v || '').replace(/[^0-9.-]/g,'')); if (Number.isNaN(n)) return 0; return Math.round(n*100); };
     const nzd = (c) => new Intl.NumberFormat('en-NZ', {style:'currency', currency:'NZD'}).format((c||0)/100);
-    const GEL_PER_NIGHT_C = 1200, SERVICE_FEE_PCT = 0.071, GST_RATE = 0.15;
+    const GEL_PER_NIGHT_C = 1200, SERVICE_FEE_PCT = 0.071, GST_RATE = 0.15, BOOKING_FEE_CAP_C = 29900;
 
     const el = (id)=>document.getElementById(id);
     const parseDate = (s)=> s ? new Date(s) : null;
@@ -215,35 +232,18 @@
 
     function currentChannel(){ const [key,label,mu] = el('channel').value.split('|'); return {key,label,markup:parseFloat(mu)}; }
 
-    function updateVisibility(){ const m = el('mode').value; el('codWrap').classList.toggle('hidden', m!=='change'); el('extWrap').classList.toggle('hidden', m!=='extension'); el('ronWrap').classList.toggle('hidden', m!=='ron'); }
-
-    // Locks
-    function unlockField(btnId, inputs){
-      const btn = el(btnId);
-      btn.addEventListener('click', ()=>{
-        const pwd = prompt('Enter password to unlock:');
-        if(pwd === 'Bachcare101'){
-          inputs.forEach(x=> x.removeAttribute('disabled'));
-          btn.textContent = '🔓';
-        } else {
-          alert('Incorrect password');
-        }
-      });
+    function updateVisibility(){
+      const m = el('mode').value;
+      el('codWrap').classList.toggle('hidden', !(m==='change' || m==='rehouse'));
+      el('extWrap').classList.toggle('hidden', m!=='extension');
+      el('ronWrap').classList.toggle('hidden', m!=='ron');
+      el('rehouseFields').classList.toggle('hidden', m!=='rehouse');
     }
-
-    // Persist owner GST & markups locally (device/browser only)
-    const PREF_KEYS = ['ownerGSTRate','mkAirbnb','mkBcom','mkVrbo'];
-    function loadPrefs(){
-      PREF_KEYS.forEach(k=>{ const v = localStorage.getItem('bc_'+k); if(v!==null && el(k)) el(k).value = v; });
-    }
-    function savePref(id){ try{ localStorage.setItem('bc_'+id, el(id).value); }catch(e){} }
 
     function syncMarkupsToDropdown(){
-      // Update dropdown values from editable fields
       const air = parseFloat(el('mkAirbnb').value||'0')/100;
       const bc = parseFloat(el('mkBcom').value||'0')/100;
       const vr = parseFloat(el('mkVrbo').value||'0')/100;
-      // mutate option values
       [...el('channel').options].forEach(opt=>{
         if(opt.value.startsWith('airbnb|')) opt.value = `airbnb|Airbnb|${air}`;
         if(opt.value.startsWith('bcom|')) opt.value = `bcom|B.com|${bc}`;
@@ -267,7 +267,6 @@
         cur = new Date(cur.getTime()+dayMs);
       }
       el('nightlyWrap').classList.remove('hidden');
-      // attach listeners to recompute when any nightly rate changes
       grid.querySelectorAll('.nightRate').forEach(inp=>{ inp.addEventListener('input', compute); inp.addEventListener('change', compute); });
     }
 
@@ -278,101 +277,129 @@
 
     function robustCopy(textareaId){
       const ta = el(textareaId);
-      ta.removeAttribute('readonly');
-      ta.select(); ta.setSelectionRange(0, 99999);
-      let ok = false;
-      try { ok = document.execCommand('copy'); } catch(e) {}
+      ta.removeAttribute('readonly'); ta.select(); ta.setSelectionRange(0, 99999);
+      let ok = false; try { ok = document.execCommand('copy'); } catch(e) {}
       ta.setAttribute('readonly','');
       if(!ok && navigator.clipboard){ navigator.clipboard.writeText(ta.value).then(()=> ok=true).catch(()=>{}); }
       alert(ok ? 'Breakdown copied to clipboard.' : 'Copy failed. Select all and copy manually.');
     }
 
     function compute(){
+      const mode = el('mode').value;
+      const isRehouse = mode==='rehouse';
       const origStart = el('origStart').value, origEnd = el('origEnd').value, newStart = el('newStart').value, newEnd = el('newEnd').value;
       const origN = nights(origStart, origEnd), newN = nights(newStart, newEnd);
       el('origNights').textContent = origN; el('newNights').textContent = newN;
       const removedN = Math.max(0, origN - newN); el('nightsRemoved').textContent = removedN;
 
-      const waiveGST = el('waiveGST').checked; const applyOwnerGST = el('applyOwnerGST').checked && !waiveGST; const ownerGSTRate = parseFloat(el('ownerGSTRate').value || '0');
+      const ownerGSTRate = parseFloat(el('ownerGSTRate').value || '0');
       const channel = currentChannel();
 
       // ORIGINAL booking (manual linen & cleaning)
-      const b1 = { rent: toCents(el('rent1').value), linen: toCents(el('linen1').value), clean: toCents(el('clean1').value), pet: toCents(el('pet1')?.value), fee: toCents(el('fee1')?.value), other: toCents(el('other1')?.value) };
-      const feeMin = toCents(el('feeMin')?.value), feeMax = toCents(el('feeMax')?.value); if(!Number.isNaN(feeMin)&&!Number.isNaN(feeMax)) b1.fee = Math.min(Math.max(b1.fee, feeMin), feeMax);
+      const b1 = {
+        rent: toCents(el('rent1').value),
+        linen: toCents(el('linen1').value),
+        clean: toCents(el('clean1').value),
+        fee: toCents(el('fee1').value),
+        addInfo: el('addInfo1').value.trim(),
+        addAmt: toCents(el('addAmt1').value)
+      };
       const gel1 = origN * GEL_PER_NIGHT_C; // auto
 
       // NEW booking (manual linen & cleaning, rent from per-night rates)
       const rent2FromNights = sumNightly();
-      const b2 = { rent: rent2FromNights, linen: toCents(el('linen2').value), clean: toCents(el('clean2').value), pet: toCents(el('pet2')?.value), fee: toCents(el('fee2')?.value || '40'), other: toCents(el('other2')?.value) };
-      const feeMin2 = toCents(el('feeMin2')?.value), feeMax2 = toCents(el('feeMax2')?.value); if(!Number.isNaN(feeMin2)&&!Number.isNaN(feeMax2)) b2.fee = Math.min(Math.max(b2.fee, feeMin2), feeMax2);
+      let fee2Auto = 4000; // default $40 if no rule provided
+      // Auto fee logic placeholder: cap at $299
+      fee2Auto = Math.min(fee2Auto, BOOKING_FEE_CAP_C);
+      const b2 = {
+        rent: rent2FromNights,
+        linen: toCents(el('linen2').value),
+        clean: toCents(el('clean2').value),
+        fee: fee2Auto,
+        addInfo: el('addInfo2').value.trim(),
+        addAmt: toCents(el('addAmt2').value)
+      };
+      // reflect in UI
+      el('fee2').value = (fee2Auto/100).toFixed(2);
+
       const gel2 = newN * GEL_PER_NIGHT_C; // auto
 
-      // Channel markup base
-      const ownerGST1C = applyOwnerGST ? Math.round(b1.rent * ownerGSTRate) : 0; const ownerGST2C = applyOwnerGST ? Math.round(b2.rent * ownerGSTRate) : 0;
+      // Channel markup base (include owner GST on rent in base if not rehouse)
+      const ownerGST1C = isRehouse ? 0 : Math.round(b1.rent * ownerGSTRate);
+      const ownerGST2C = isRehouse ? 0 : Math.round(b2.rent * ownerGSTRate);
       const markup1C = Math.round((b1.rent + ownerGST1C + b1.fee + gel1) * channel.markup);
       const markup2C = Math.round((b2.rent + ownerGST2C + b2.fee + gel2) * channel.markup);
 
-      // GST on taxable (exclude GEL and markup). If waiveGST, set to 0.
-      const gst1C = waiveGST ? 0 : Math.round((b1.rent + b1.linen + b1.clean + b1.pet + b1.fee + b1.other) * GST_RATE);
-      const gst2C = waiveGST ? 0 : Math.round((b2.rent + b2.linen + b2.clean + b2.pet + b2.fee + b2.other) * GST_RATE);
+      // GST on taxable (exclude GEL & markup). Rehouse: waive GST
+      const gst1C = isRehouse ? 0 : Math.round((b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt) * GST_RATE);
+      const gst2C = isRehouse ? 0 : Math.round((b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt) * GST_RATE);
 
-      const total1 = b1.rent + b1.linen + b1.clean + b1.pet + b1.fee + b1.other + gel1 + markup1C + gst1C;
-      const total2 = b2.rent + b2.linen + b2.clean + b2.pet + b2.fee + b2.other + gel2 + markup2C + gst2C;
+      const total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + gel1 + markup1C + gst1C;
+      const total2 = b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + gst2C;
       const diff = total2 - total1; const codCollectC = Math.max(0, diff);
 
       // UI updates
       el('gelAuto1').textContent = nzd(gel1); el('gelAuto2').textContent = nzd(gel2);
-      el('gst1').textContent = waiveGST ? 'Waived (Bump)' : nzd(gst1C);
-      el('gst2').textContent = waiveGST ? 'Waived (Bump)' : nzd(gst2C);
+      el('gst1').textContent = isRehouse ? 'Waived (Rehouse)' : nzd(gst1C);
+      el('gst2').textContent = isRehouse ? 'Waived (Rehouse)' : nzd(gst2C);
       el('total1').textContent = nzd(total1); el('total2').textContent = nzd(total2); el('tile1').textContent = nzd(total1); el('tile2').textContent = nzd(total2);
       el('tile3').textContent = nzd(Math.abs(diff)); el('tile3label').textContent = diff>=0 ? 'Excess to Collect' : 'Refund to Guest'; el('tile3desc').textContent = diff>=0 ? 'Collect this amount' : 'Refund due (policy may absorb)';
 
-      // Finance Breakdown (HTML)
-      const gstLine = waiveGST ? '<b>GST:</b> Waived (Bump)<br>' : '<b>GST:</b> Applied on taxable (excludes GEL & channel markup)<br>';
-      el('htmlCOD').value = '<b>Breakdown Itinerary Note</b><br>' +
-        `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` +
-        '<b>Change of Date (COD)</b><br>' + gstLine +
-        '<b>Original Booking</b><br>' +
-        `Rent: ${nzd(b1.rent)}<br>` + `Linen: ${nzd(b1.linen)}<br>` + `Cleaning: ${nzd(b1.clean)}<br>` + `Pet: ${nzd(b1.pet)}<br>` +
-        `Booking Fee (clamped): ${nzd(b1.fee)}<br>` + `Other: ${nzd(b1.other)}<br>` + `GEL: ${nzd(gel1)}<br>` + `Channel Markup: ${nzd(markup1C)}<br>` + `GST: ${waiveGST ? 'Waived' : nzd(gst1C)}<br>` + `Total: ${nzd(total1)}<br><br>` +
-        '<b>New Booking</b><br>' +
-        `Rent (sum nights): ${nzd(b2.rent)}<br>` + `Linen: ${nzd(b2.linen)}<br>` + `Cleaning: ${nzd(b2.clean)}<br>` + `Pet: ${nzd(b2.pet)}<br>` +
-        `Booking Fee (clamped): ${nzd(b2.fee)}<br>` + `Other: ${nzd(b2.other)}<br>` + `GEL: ${nzd(gel2)}<br>` + `Channel Markup: ${nzd(markup2C)}<br>` + `GST: ${waiveGST ? 'Waived' : nzd(gst2C)}<br>` + `Total: ${nzd(total2)}<br><br>` +
-        '<b>Outcome</b><br>' + `Difference: ${nzd(diff)}<br>` + `Collect (COD policy, negatives absorbed): ${nzd(codCollectC)}<br>`;
+      // Finance Breakdown (all modes)
+      const header = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + `<b>Mode:</b> ${mode.toUpperCase()}${isRehouse? ' (GST Waived)':''}<br>`;
+      const propLine = isRehouse ? `<b>Original Property ID:</b> ${el('propIdOld').value||'-'}<br><b>New Property ID:</b> ${el('propIdNew').value||'-'}<br>` : '';
 
-      // RON + EXT kept from prior version
-      const feePerNightC = origN > 0 ? Math.round((toCents(el('fee1')?.value))/Math.max(1,origN)) : 0; const removedGelC = removedN * GEL_PER_NIGHT_C; const ronMarkupBaseC = removedGelC + feePerNightC * removedN; const ronMarkupC = Math.round(ronMarkupBaseC * channel.markup); const ronServiceShareC = Math.round((removedGelC + feePerNightC * removedN) * SERVICE_FEE_PCT); const ronRefundC = removedGelC + ronMarkupC + ronServiceShareC;
-      el('ronGelRefund').textContent = nzd(removedGelC); el('ronMarkup').textContent = nzd(ronMarkupC); el('ronService').textContent = nzd(ronServiceShareC); el('ronTotal').textContent = nzd(ronRefundC);
-      const gstLineRON = waiveGST ? '<b>GST:</b> Waived (Bump)<br>' : '<b>GST:</b> Applied on taxable (excludes GEL & channel markup)<br>';
-      el('htmlRON').value = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + '<b>Reduction of Nights (RON)</b><br>' + gstLineRON + `Original: ${origStart || '-'} to ${origEnd || '-'} (${origN} nights)<br>` + `New: ${newStart || '-'} to ${newEnd || '-'} (${newN} nights)<br>` + `Nights removed: ${removedN}<br>` + `GEL refund: ${nzd(removedGelC)}<br>` + `Markup on GEL + fee share: ${nzd(ronMarkupC)}<br>` + `Service fee share (7.1%): ${nzd(ronServiceShareC)}<br>` + `<b>Total refund:</b> ${nzd(ronRefundC)}<br>`;
+      const add1 = b1.addAmt>0 ? `${b1.addInfo||'Additional charge'}: ${nzd(b1.addAmt)}<br>` : '';
+      const add2 = b2.addAmt>0 ? `${b2.addInfo||'Additional charge'}: ${nzd(b2.addAmt)}<br>` : '';
+
+      const html = header + propLine +
+        '<b>Original Booking</b><br>' +
+        `Rent: ${nzd(b1.rent)}<br>` + `Linen: ${nzd(b1.linen)}<br>` + `Cleaning: ${nzd(b1.clean)}<br>` + `Booking Fee: ${nzd(b1.fee)}<br>` + add1 +
+        `GEL: ${nzd(gel1)}<br>` + `Channel Markup: ${nzd(markup1C)}<br>` + `GST: ${isRehouse ? 'Waived' : nzd(gst1C)}<br>` + `Total: ${nzd(total1)}<br><br>` +
+        '<b>New Booking</b><br>' +
+        `Rent (sum nights): ${nzd(b2.rent)}<br>` + `Linen: ${nzd(b2.linen)}<br>` + `Cleaning: ${nzd(b2.clean)}<br>` + `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` + add2 +
+        `GEL: ${nzd(gel2)}<br>` + `Channel Markup: ${nzd(markup2C)}<br>` + `GST: ${isRehouse ? 'Waived' : nzd(gst2C)}<br>` + `Total: ${nzd(total2)}<br><br>` +
+        '<b>Outcome</b><br>' + `Difference: ${nzd(diff)}<br>` + `Collect (negatives absorbed per policy): ${nzd(codCollectC)}<br>`;
+
+      el('htmlCOD').value = html;
+      el('previewCOD').innerHTML = html;
+
+      // EXT & RON previews reuse existing values for now
+      el('htmlEXT').value = header + '<b>Extension</b><br>(Details calculated in the Extension tab.)';
+      el('previewEXT').innerHTML = el('htmlEXT').value;
+      el('htmlRON').value = header + '<b>Reduction of Nights (RON)</b><br>' + `Nights removed: ${removedN}<br>`;
+      el('previewRON').innerHTML = el('htmlRON').value;
     }
 
+    // Tabs wiring
+    document.querySelectorAll('.tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.getAttribute('data-tab');
+        document.getElementById('calcPane').classList.add('hidden');
+        document.getElementById('settingsPane').classList.add('hidden');
+        document.getElementById(target).classList.remove('hidden');
+      });
+    });
+
     // Listeners
-    ['mode','channel','waiveGST','applyOwnerGST','ownerGSTRate','origStart','origEnd','newStart','newEnd','linen1','clean1','linen2','clean2','rent1','pet1','fee1','other1','pet2','fee2','other2','feeMin','feeMax','feeMin2','feeMax2']
+    ['mode','channel','ownerGSTRate','origStart','origEnd','newStart','newEnd','linen1','clean1','linen2','clean2','rent1','fee1','addInfo1','addAmt1','addInfo2','addAmt2','propIdOld','propIdNew']
       .forEach(id=>{ const node=el(id); if(node){ node.addEventListener('input', compute); node.addEventListener('change', compute);} });
 
-    // Persist when unlocking/adjusting
-    ['ownerGSTRate','mkAirbnb','mkBcom','mkVrbo'].forEach(id=>{ const node = el(id); if(node){ node.addEventListener('change', ()=>{ savePref(id); syncMarkupsToDropdown(); compute(); }); }});
-
-    // Lock controls
-    unlockField('gstLockBtn', [el('ownerGSTRate')]);
-    unlockField('markupLockBtn', [el('mkAirbnb'), el('mkBcom'), el('mkVrbo')]);
+    // Settings listeners -> update dropdown
+    ['mkAirbnb','mkBcom','mkVrbo'].forEach(id=>{ const node=el(id); if(node){ node.addEventListener('change', ()=>{ syncMarkupsToDropdown(); compute(); }); }});
 
     // Nightly rates generation
     el('genNights').addEventListener('click', ()=>{ buildNightlyInputs(); compute(); });
 
-    // Copy buttons (robust)
+    // Copy buttons
     el('copyCOD').addEventListener('click', ()=> robustCopy('htmlCOD'));
     el('copyEXT').addEventListener('click', ()=> robustCopy('htmlEXT'));
     el('copyRON').addEventListener('click', ()=> robustCopy('htmlRON'));
 
-    // Toggles for optional panes
-    el('codOptBtn1').addEventListener('click', ()=>{ el('codOpt1').classList.toggle('hidden'); });
-    el('codOptBtn2').addEventListener('click', ()=>{ el('codOpt2').classList.toggle('hidden'); });
-    el('extOptBtn')?.addEventListener('click', ()=>{ el('extOpt').classList.toggle('hidden'); });
-
     // Init
-    loadPrefs(); updateVisibility(); syncMarkupsToDropdown(); compute();
+    syncMarkupsToDropdown(); updateVisibility(); compute();
   </script>
 </body>
 </html>
