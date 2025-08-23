@@ -4,7 +4,14 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Bachcare Calculator (Standalone)</title>
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Flatpickr (calendar picker) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
   <style>
     .card{background:#fff;border:1px solid #f1f5f9;border-radius:1rem;padding:1.25rem;box-shadow:0 1px 2px rgba(16,24,40,.04)}
     .row{display:flex;justify-content:space-between;align-items:center}
@@ -195,7 +202,7 @@
           </div>
         </div>
 
-        <!-- Extension (kept minimal placeholder) -->
+        <!-- Extension (placeholder) -->
         <div id="extWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">Extension Inputs</h2>
@@ -210,7 +217,7 @@
           </section>
         </div>
 
-        <!-- RON (kept minimal placeholder) -->
+        <!-- RON (placeholder) -->
         <div id="ronWrap" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">RON Summary</h2>
@@ -494,7 +501,7 @@
       if (el("htmlRON")) { el("htmlRON").value = header + "<b>Reduction of Nights (RON)</b><br>" + `Nights removed: ${Math.max(0, origN - newN)}<br>`; el("previewRON").innerHTML = el("htmlRON").value; }
     }
 
-    // ---------- Wiring ----------
+    // ---------- Tabs ----------
     document.querySelectorAll('.tab').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
@@ -506,7 +513,26 @@
       });
     });
 
+    // ---------- Calendars (Flatpickr) ----------
+    function attachCalendars() {
+      const opts = {
+        altInput: true,       // prettier display
+        altFormat: "d/m/Y",   // shown to the user
+        dateFormat: "Y-m-d",  // actual value used by the script
+        allowInput: true,
+        onChange: () => compute(true)
+      };
+      if (window.flatpickr) {
+        flatpickr("#origStart", opts);
+        flatpickr("#origEnd",   opts);
+        flatpickr("#newStart",  opts);
+        flatpickr("#newEnd",    opts);
+      }
+    }
+
+    // ---------- Init ----------
     (function init() {
+      attachCalendars();
       syncMarkupsToDropdown();
       updateVisibility();
 
