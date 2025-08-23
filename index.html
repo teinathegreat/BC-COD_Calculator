@@ -213,6 +213,9 @@
     const nzd = (c) => new Intl.NumberFormat('en-NZ', {style:'currency', currency:'NZD'}).format((c||0)/100);
     const GEL_PER_NIGHT_C = 1200, SERVICE_FEE_PCT = 0.071, GST_RATE = 0.15, BOOKING_FEE_CAP_C = 29900;
 
+    // Track last date range to avoid rebuilding nightly inputs on every keystroke
+    let lastNewStart = '', lastNewEnd = '';
+
     const el = (id)=>document.getElementById(id);
     const parseDate = (s)=> s ? new Date(s) : null;
     const nights = (a,b)=>{ const A=parseDate(a), B=parseDate(b); if(!A||!B) return 0; return Math.max(0, Math.round((B-A)/(1000*60*60*24))); };
@@ -283,7 +286,13 @@
       const removedN = Math.max(0, origN - newN); el('nightsRemoved').textContent = removedN;
 
       // auto build per-night grid whenever dates change
-      buildNightlyInputs();
+      if(rebuildDates){
+        const ns = el('newStart').value, ne = el('newEnd').value;
+        if(ns !== lastNewStart || ne !== lastNewEnd){
+          buildNightlyInputs();
+          lastNewStart = ns; lastNewEnd = ne;
+        }
+      }
 
       const ownerGSTRate = parseFloat(el('ownerGSTRate').value || '0');
       const channel = currentChannel();
@@ -338,7 +347,9 @@
 
       // Finance Breakdown
       const header = '<b>Breakdown Itinerary Note</b><br>' + `<b>Channel:</b> ${channel.label} (Markup ${(channel.markup*100).toFixed(1)}%)<br>` + `<b>Mode:</b> ${mode.toUpperCase()}${isRehouse? ' (GST Waived)':''}<br>`;
-      const propLine = isRehouse ? `<b>Original Property ID:</b> ${el('propIdOld').value||'-'}<br><b>New Property ID:</b> ${el('propIdNew').value||'-'}<br>` : '';
+      const oldId = (el('propIdOld')?.value || '').trim();
+      const newId = (el('propIdNew')?.value || '').trim();
+      const propLine = (isRehouse || oldId || newId) ? `<b>Original Property ID:</b> ${oldId||'-'}<br><b>New Property ID:</b> ${newId||'-'}<br>` : '';
       const add1 = b1.addAmt>0 ? `${b1.addInfo||'Additional charge'}: ${nzd(b1.addAmt)}<br>` : '';
       const add2 = b2.addAmt>0 ? `${b2.addInfo||'Additional charge'}: ${nzd(b2.addAmt)}<br>` : '';
       const html = header + propLine +
