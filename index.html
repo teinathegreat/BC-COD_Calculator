@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.6) -->
-<!-- v0.6: Outcome tile now uses "Amount to charge/refund guest" wording dynamically -->
+<!-- Bachcare Calculator — Base Working Version (v0.7) -->
+<!-- v0.7: Remove footer note; for OTA platforms show only Property ID + Total Holiday Cost in Original Booking card -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.6)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.7)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -236,7 +236,6 @@
                   <div id="previewCOD" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
                 </section>
               </div>
-              <p class="text-xs text-gray-500 mt-3">COD negatives are absorbed per policy.</p>
             </div>
           </div>
         </div>
@@ -437,10 +436,10 @@
       // Rebuild nightly grid ONLY if date strings changed
       if (rebuildDates) {
         const nsStr = el("newStart").value || "";
-        const neStr = el("newEnd").value || "";
-        if (nsStr !== lastNewStart || neStr !== lastNewEnd) {
+        the_neStr = el("newEnd").value || "";
+        if (nsStr !== lastNewStart || the_neStr !== lastNewEnd) {
           buildNightlyInputs();
-          lastNewStart = nsStr; lastNewEnd = neStr;
+          lastNewStart = nsStr; lastNewEnd = the_neStr;
         }
       }
 
