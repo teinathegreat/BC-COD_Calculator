@@ -1,9 +1,11 @@
 <!DOCTYPE html>
+<!-- Bachcare Calculator — Base Working Version (v0.1) -->
+<!-- v0.1: Header says "Booking Breakdown" and adds an extra <br> after Scenario for separation -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.1)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -476,9 +478,9 @@
 
       // ---- Finance Breakdown (HTML + Preview) ----
       const header =
-        "<b>Breakdown Itinerary Note</b><br>" +
+        "<b>Booking Breakdown</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
-        `<b>Scenario:</b> ${scen.label}${isRehouse ? " (GST Waived)" : ""}<br>`;
+        `<b>Scenario:</b> ${scen.label}${isRehouse ? " (GST Waived)" : ""}<br><br>`;
       const oldId = propOld;
       const newId = propNew;
       const propLine = (isRehouse || oldId || newId)
