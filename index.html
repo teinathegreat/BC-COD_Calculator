@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.16) -->
-<!-- v0.16: Add check-in / check-out dates and # nights to the Finance Breakdown Itinerary Note for both bookings -->
+<!-- Bachcare Calculator — Base Working Version (v0.17) -->
+<!-- v0.17: Add multi-session Save/Load/Delete via localStorage (includes nightly rates) -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.16)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.17)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -68,7 +68,7 @@
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights">0</span></div>
           </section>
 
-          <section class="card">
+        <section class="card">
             <h2 class="text-xl font-semibold mb-3">New Dates</h2>
             <label class="block"><span class="text-sm font-medium text-gray-700">Start</span>
               <input type="text" id="newStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
@@ -226,6 +226,29 @@
                   <div id="tile3" class="text-2xl font-semibold">—</div>
                   <div class="text-xs text-gray-500" id="tile3desc">Based on totals above</div>
                 </div>
+              </div>
+
+              <!-- Session manager -->
+              <div class="mt-4 card">
+                <h2 class="text-lg font-semibold mb-2">Sessions</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-700">Saved Sessions</label>
+                    <select id="sessionPicker" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white">
+                      <option value="">— none —</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-700">Name</label>
+                    <input id="sessionName" type="text" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white" placeholder="e.g. Smith 23-28 Aug"/>
+                  </div>
+                  <div class="flex gap-2">
+                    <button id="sessionSave" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Save as New / Overwrite</button>
+                    <button id="sessionLoad" class="px-3 py-2 rounded-xl bg-blue-600 text-white">Load</button>
+                    <button id="sessionDelete" class="px-3 py-2 rounded-xl bg-red-600 text-white">Delete</button>
+                  </div>
+                </div>
+                <div class="mini mt-2">Sessions are stored locally in your browser. Nightly rates are included.</div>
               </div>
 
               <!-- Breakdown + Preview side by side -->
@@ -496,6 +519,93 @@
       }
     }
 
+    // ---------- Session storage helpers ----------
+    const SESS_KEY = "bachcareCalc:sessions";
+    function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
+    function writeSessions(obj){ localStorage.setItem(SESS_KEY, JSON.stringify(obj||{})); refreshSessionPicker(); }
+    function refreshSessionPicker(){
+      const sel = el("sessionPicker"); if(!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">— none —</option>`;
+      const sessions = readSessions();
+      Object.keys(sessions).sort().forEach(name=>{
+        const opt = document.createElement("option");
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if(cur && sessions[cur]) sel.value = cur;
+    }
+    function collectNightlyRates(){
+      const arr = [];
+      document.querySelectorAll("#nightlyGrid .grid").forEach(row=>{
+        const dateTxt = row.querySelector(".text-sm")?.textContent?.trim()||"";
+        const val = row.querySelector(".nightRate")?.value||"";
+        arr.push({date: dateTxt, value: val});
+      });
+      return arr;
+    }
+    function applyNightlyRates(nightly){
+      if(!Array.isArray(nightly) || nightly.length===0) return;
+      nightly.forEach(n=>{
+        const rows = [...document.querySelectorAll("#nightlyGrid .grid")];
+        const row = rows.find(r => (r.querySelector(".text-sm")?.textContent||"").trim() === n.date);
+        if(row){
+          const inp = row.querySelector(".nightRate");
+          if(inp){ inp.value = n.value; }
+        }
+      });
+      sumNightly();
+    }
+    function collectFormData(){
+      const data = {};
+      document.querySelectorAll("input, select, textarea").forEach(node=>{
+        if(!node.id) return;
+        if(node.type === "checkbox") data[node.id] = !!node.checked;
+        else data[node.id] = node.value;
+      });
+      data._nightly = collectNightlyRates();
+      return data;
+    }
+    function applyFormData(data){
+      if(!data || typeof data !== "object") return;
+      // set simple fields first
+      Object.keys(data).forEach(id=>{
+        if(id === "_nightly") return;
+        const node = el(id);
+        if(!node) return;
+        if(node.type === "checkbox") node.checked = !!data[id];
+        else node.value = data[id];
+      });
+      // rebuild nights from dates, then apply nightly values
+      compute(true);
+      applyNightlyRates(data._nightly);
+      compute(false);
+    }
+    function saveSessionNamed(name){
+      if(!name){ alert("Please enter a session name."); return; }
+      const all = readSessions();
+      all[name] = collectFormData();
+      writeSessions(all);
+      alert(`Saved session: ${name}`);
+      el("sessionName").value = name;
+      el("sessionPicker").value = name;
+    }
+    function loadSessionNamed(name){
+      const all = readSessions();
+      if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
+      applyFormData(all[name]);
+      alert(`Loaded session: ${name}`);
+    }
+    function deleteSessionNamed(name){
+      const all = readSessions();
+      if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
+      if(!confirm(`Delete saved session "${name}"?`)) return;
+      delete all[name];
+      writeSessions(all);
+      refreshSessionPicker();
+      alert(`Deleted session: ${name}`);
+    }
+
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
       // Dates & nights
@@ -625,9 +735,10 @@
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
         `<b>Scenario:</b> ${scen.label}<br><br>`;
 
-      // Date lines for each section
-      const origDatesLine = (os && oe) ? `Check-in: ${dtIso(os)} &nbsp;|&nbsp; Check-out: ${dtIso(oe)} &nbsp;|&nbsp; Nights: ${origN}<br>` : "";
-      const newDatesLine  = (ns && ne) ? `Check-in: ${dtIso(ns)} &nbsp;|&nbsp; Check-out: ${dtIso(ne)} &nbsp;|&nbsp; Nights: ${newN}<br>` : "";
+      const origNights = (os && oe) ? nightsBetween(os, oe) : 0;
+      const newNights  = (ns && ne) ? nightsBetween(ns, ne) : 0;
+      const origDatesLine = (os && oe) ? `Check-in: ${dtIso(os)} &nbsp;|&nbsp; Check-out: ${dtIso(oe)} &nbsp;|&nbsp; Nights: ${origNights}<br>` : "";
+      const newDatesLine  = (ns && ne) ? `Check-in: ${dtIso(ns)} &nbsp;|&nbsp; Check-out: ${dtIso(ne)} &nbsp;|&nbsp; Nights: ${newNights}<br>` : "";
 
       const originalHtml = (ch.key === 'direct')
         ? "<b>Original Booking</b><br>" +
@@ -661,7 +772,7 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // ---- Direct-only pre-drafted email (unchanged here) ----
+      // ---- Direct-only pre-drafted email (unchanged from prior) ----
       if (direct) {
         const rentOriginalEmailC = b1.rent + (includeOwnerGST ? ownerGST1C : 0);
         const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
@@ -742,6 +853,12 @@ Bachcare Team`;
 
       el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
       el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
+
+      // Session manager events
+      refreshSessionPicker();
+      el("sessionSave").addEventListener("click", ()=> saveSessionNamed(el("sessionName").value.trim() || el("sessionPicker").value.trim()));
+      el("sessionLoad").addEventListener("click", ()=> loadSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
+      el("sessionDelete").addEventListener("click", ()=> deleteSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
 
       compute(true);
     })();
