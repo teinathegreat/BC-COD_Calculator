@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.13) -->
-<!-- v0.13: Fix scenario badge by using real prop IDs; include scenario in guest email & breakdown -->
+<!-- Bachcare Calculator — Base Working Version (v0.14) -->
+<!-- v0.14: Remove GEL from Original Booking; email wording & 24h validity; fix "in Settings" spacing; add Direct 30-day policy popup -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.13)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.14)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -96,7 +96,7 @@
               <div class="mini">Used when Platform is Airbnb, Booking.com or VRBO.</div>
             </div>
 
-            <!-- Direct-only full breakdown -->
+            <!-- Direct-only full breakdown (GEL removed) -->
             <div id="obDirectFields" class="grid grid-cols-1 gap-3 mt-3">
               <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span>
                 <input type="text" id="rent1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00">
@@ -122,14 +122,13 @@
 
             <div class="border-t border-gray-100 my-2"></div>
 
-            <!-- Direct breakdown rows -->
+            <!-- Direct breakdown rows (no GEL row now) -->
             <div id="obBreakdown" class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent</span><span id="obRent">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Linen</span><span id="obLinen">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Cleaning</span><span id="obClean">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Booking Fee</span><span id="obFee">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Additional Charges</span><span id="obAdd">$0.00</span></div>
-              <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto1">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Channel Markup</span><span id="obMarkup">$0.00</span></div>
             </div>
 
@@ -308,7 +307,30 @@
     </div>
   </div>
 
-  <!-- (Other OTA guidance modals unchanged) -->
+  <!-- Modal: Direct 30-day policy (Change/RON) -->
+  <div id="direct30Modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="d30-title" aria-describedby="d30-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-amber-50 border border-amber-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="d30-title" class="text-xl font-semibold text-gray-900">Approval required</h3>
+            <p id="d30-desc" class="mt-2 text-gray-700">
+              For <b>Bachcare Direct</b>, <b>date changes</b> and <b>reductions of nights</b> can only be processed <b>outside of 30 days</b> of the booking start per policy.
+              This request appears to be <b>inside 30 days</b>. Please seek <b>Team Leader approval</b> before proceeding.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="d30Close" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ---------- Helpers ----------
@@ -320,8 +342,8 @@
     };
     const nzd = (c) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format((c || 0) / 100);
     const DAY = 86400000;
-
     function todayUTC(){ const n=new Date(); return new Date(Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())); }
+
     // Accept dd/mm/yyyy or yyyy-mm-dd; strict, timezone-safe
     function getDateVal(id) {
       const v = (el(id)?.value || "").trim();
@@ -340,10 +362,7 @@
 
     let lastNewStart = "", lastNewEnd = "";
     let lastDirectModalKey = "";
-    let lastOtaExtActiveKey = "";
-    let lastOtaChangeKey = "";
-    let lastFreeCancelKey = "";
-    let docReminderShown = false;
+    let lastDirect30Key = "";
 
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
@@ -462,6 +481,21 @@
       }
     }
 
+    function maybeShowDirect30Policy(chKey, scenarioKey, os){
+      if (chKey !== 'direct' || !os) return;
+      if (!(scenarioKey === 'change' || scenarioKey === 'ron')) return;
+      const today = todayUTC();
+      const daysToStart = Math.round((os - today) / DAY);
+      if (daysToStart <= 30) {
+        const key = `${chKey}|${scenarioKey}|${os.toISOString()}`;
+        if (lastDirect30Key !== key) {
+          lastDirect30Key = key;
+          el('direct30Modal').classList.remove('hidden');
+          setTimeout(()=> el('d30Close')?.focus(), 0);
+        }
+      }
+    }
+
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
       // Dates & nights
@@ -496,10 +530,11 @@
       const amendCount = parseInt(el("amendCount2")?.value || "0", 10) || 0;
       const includeOwnerGST = !!el("includeOwnerGST")?.checked;
 
-      // ORIGINAL booking (Direct fields)
+      // Property IDs
       const propOld = (el("propIdOld")?.value || "").trim();
       const propNew = (el("propIdNew")?.value || "").trim();
 
+      // ORIGINAL booking (Direct fields) — GEL removed
       const b1 = {
         rent: toCents(el("rent1").value),
         linen: toCents(el("linen1").value),
@@ -508,7 +543,7 @@
         addInfo: (el("addInfo1").value || "").trim(),
         addAmt: toCents(el("addAmt1").value)
       };
-      const gel1 = (os && oe) ? nightsBetween(os, oe) * GEL_PER_NIGHT_C : 0;
+      const gel1 = 0; // per request: GEL already included in the user-entered Rent for Original Booking
 
       // NEW booking (sum nightly)
       const rent2 = sumNightly();
@@ -543,7 +578,7 @@
       // Totals
       let total1;
       if (direct) {
-        total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + gel1 + markup1C;
+        total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C; // GEL excluded
       } else {
         const otaC = toCents(el("otaTotal1")?.value || 0);
         total1 = otaC;
@@ -552,9 +587,11 @@
       const total2 = includeOwnerGST ? (total2Base + ownerGST2C) : total2Base;
       const diff   = total2 - total1;
 
-      // ---- Scenario (now using real property IDs) ----
+      // ---- Scenario ----
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
+      // Direct 30-day policy popup for Change/RON
+      maybeShowDirect30Policy(ch.key, scen.key, os);
 
       // ---- UI breakdowns ----
       el("obRent").textContent   = nzd(b1.rent);
@@ -562,7 +599,6 @@
       el("obClean").textContent  = nzd(b1.clean);
       el("obFee").textContent    = nzd(b1.fee);
       el("obAdd").textContent    = nzd(b1.addAmt);
-      el("gelAuto1").textContent = nzd(gel1);
       el("obMarkup").textContent = nzd(markup1C);
       el("obOtaTotal").textContent = nzd(total1);
 
@@ -581,138 +617,4 @@
       el("tile1").textContent = nzd(total1);
       el("tile2").textContent = nzd(total2);
       el("tile3").textContent = nzd(Math.abs(diff));
-      el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
-      el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
-
-      // ---- Finance Breakdown (HTML + Preview) ----
-      const header =
-        "<b>Booking Breakdown</b><br>" +
-        `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
-        `<b>Scenario:</b> ${scen.label}<br><br>`;
-
-      const originalHtml = (ch.key === 'direct')
-        ? "<b>Original Booking</b><br>" +
-          `Rent: ${nzd(b1.rent)}<br>` +
-          `GEL: ${nzd(gel1)}<br>` +
-          (includeOwnerGST ? `Owner GST Total: ${nzd(ownerGST1C)}<br>` : "") +
-          `Linen: ${nzd(b1.linen)}<br>` +
-          `Cleaning: ${nzd(b1.clean)}<br>` +
-          `Booking Fee: ${nzd(b1.fee)}<br>` +
-          `Total: ${nzd(total1)}<br><br>`
-        : "<b>Original Booking</b><br>" +
-          `Total Holiday Cost: ${nzd(total1)}<br><br>`;
-
-      const newHtml =
-        "<b>New Booking</b><br>" +
-        `Rent (sum nights): ${nzd(b2.rent)}<br>` +
-        `GEL: ${nzd(gel2)}<br>` +
-        (includeOwnerGST ? `Owner GST Total: ${nzd(ownerGST2C)}<br>` : "") +
-        `Linen: ${nzd(b2.linen)}<br>` +
-        `Cleaning: ${nzd(b2.clean)}<br>` +
-        `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` +
-        `Total: ${nzd(total2)}<br><br>`;
-
-      const outcomeHtml = diff >= 0
-        ? `Amount to charge guest: ${nzd(diff)}<br>`
-        : `Amount to refund guest: ${nzd(-diff)}<br>`;
-
-      const html = header + originalHtml + newHtml + "<b>Outcome</b><br>" + outcomeHtml;
-      el("htmlCOD").value = html;
-      el("previewCOD").innerHTML = html;
-
-      // ---- Direct-only pre-drafted email (now includes Scenario) ----
-      if (direct) {
-        const rentOriginalEmailC =
-          b1.rent + gel1 + (includeOwnerGST ? ownerGST1C : 0);
-        const rentNewEmailC =
-          b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
-
-        const email =
-`Subject: Updated Booking Quote for Your Dates
-
-Hi there,
-
-Thank you for your request. Scenario: **${scen.label}**.
-Below is a clear comparison of your original booking and the updated booking.
-
-— Original Booking —
-• Rent: ${nzd(rentOriginalEmailC)}
-• Linen: ${nzd(b1.linen)}
-• Cleaning: ${nzd(b1.clean)}
-• Booking Fee: ${nzd(b1.fee)}
-• Original Total: ${nzd(total1)}
-
-— New Booking —
-• Rent: ${nzd(rentNewEmailC)}
-• Linen: ${nzd(b2.linen)}
-• Cleaning: ${nzd(b2.clean)}
-• Booking Fee: ${nzd(b2.fee)}${amendTotalC > 0 ? `\n• Amendment Fee: ${nzd(amendTotalC)}` : ``}
-• New Total: ${nzd(total2)}
-
-${diff >= 0
-  ? `Amount to charge: ${nzd(diff)}. Once you confirm, we’ll process this payment and finalise the change.`
-  : `Amount to refund: ${nzd(-diff)}. Once you confirm, we’ll process the refund and finalise the change.`}
-
-If everything looks good, please reply to confirm and we’ll complete the update for you.
-
-Kind regards,
-Bachcare Team`;
-        el("guestEmail").value = email;
-      } else {
-        el("guestEmail").value = "";
-      }
-
-      // Reflect fee2 read-only
-      el("fee2").value = (b2.fee / 100).toFixed(2);
-    }
-
-    // ---------- Tabs ----------
-    document.querySelectorAll('.tab').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        const target = btn.getAttribute('data-tab');
-        document.getElementById('calcPane').classList.add('hidden');
-        document.getElementById('settingsPane').classList.add('hidden');
-        document.getElementById(target).classList.remove('hidden');
-      });
-    });
-
-    // ---------- Calendars (Flatpickr) ----------
-    function attachCalendars() {
-      const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
-      if (window.flatpickr) {
-        flatpickr("#origStart", opts);
-        flatpickr("#origEnd",   opts);
-        flatpickr("#newStart",  opts);
-        flatpickr("#newEnd",    opts);
-      }
-    }
-
-    // ---------- Init ----------
-    (function init() {
-      attachCalendars();
-      syncMarkupsToDropdown();
-
-      // Inputs that recompute WITHOUT rebuilding nightly grid
-      ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","includeOwnerGST"]
-        .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
-
-      // Dates trigger recompute WITH nightly grid rebuild
-      ["origStart","origEnd","newStart","newEnd"]
-        .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
-
-      // Modal close
-      el('dmClose')?.addEventListener('click', ()=> el('directModal').classList.add('hidden'));
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal')?.classList.add('hidden'); }});
-
-      // Copy buttons
-      el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
-      el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
-
-      // First run
-      compute(true);
-    })();
-  </script>
-</body>
-</html>
+      el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund
