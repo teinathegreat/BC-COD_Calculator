@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.15) -->
-<!-- v0.15: Space before “Settings”; Direct 30-day popup mentions extensions ok; Breakdown editor & preview side-by-side -->
+<!-- Bachcare Calculator — Base Working Version (v0.16) -->
+<!-- v0.16: Add check-in / check-out dates and # nights to the Finance Breakdown Itinerary Note for both bookings -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.15)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.16)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -27,11 +27,8 @@
     .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
     .hidden-soft{display:none}
     .disabled-soft{opacity:.5;pointer-events:none}
-    /* Make preview area scroll independently when tall */
     #previewCOD{max-height:20rem;overflow:auto}
-    @media (min-width:1024px){
-      #htmlCOD{height:20rem}
-    }
+    @media (min-width:1024px){ #htmlCOD{height:20rem} }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -349,6 +346,8 @@
     const nzd = (c) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format((c || 0) / 100);
     const DAY = 86400000;
     function todayUTC(){ const n=new Date(); return new Date(Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())); }
+
+    // Accept dd/mm/yyyy or yyyy-mm-dd; strict, timezone-safe
     function getDateVal(id) {
       const v = (el(id)?.value || "").trim();
       if (!v) return null;
@@ -356,13 +355,13 @@
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d, m, y] = v.split("/").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
       const tryD = new Date(v); return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
     }
-    const dtIso = (d) => d.toISOString().slice(0,10);
+    const dtIso = (d) => d.toISOString().slice(0, 10);
     const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
     const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
 
     // ---------- Constants ----------
-    const GEL_PER_NIGHT_C = 1200;
-    const BOOKING_FEE_CAP_C = 29900;
+    const GEL_PER_NIGHT_C = 1200;        // $12/night in cents
+    const BOOKING_FEE_CAP_C = 29900;     // $299 cap
 
     let lastNewStart = "", lastNewEnd = "";
     let lastDirectModalKey = "";
@@ -398,10 +397,12 @@
       el("obBreakdown").classList.toggle("hidden-soft", !direct);
       setInputsDisabled("obDirectFields", !direct);
       setInputsDisabled("obBreakdown",   !direct);
+
       el("obOtaFields").classList.toggle("hidden-soft", direct);
       el("obOtaSummary").classList.toggle("hidden-soft", direct);
       setInputsDisabled("obOtaFields", direct);
       setInputsDisabled("obOtaSummary", direct);
+
       el("guestEmailCard").classList.toggle("hidden-soft", !direct);
     }
 
@@ -412,7 +413,9 @@
       grid.innerHTML = "";
       el("rent2Sum").textContent = nzd(0);
       if (!s || !e || e <= s) return;
-      let cur = new Date(s.getTime()), idx = 0;
+
+      let cur = new Date(s.getTime());
+      let idx = 0;
       while (cur < e) {
         const row = document.createElement("div");
         row.className = "grid grid-cols-7 gap-2 items-center";
@@ -430,12 +433,14 @@
         inp.addEventListener("change", () => { sumNightly(); compute(false); });
       });
     }
+
     function sumNightly() {
       let sum = 0;
       document.querySelectorAll("#nightlyGrid .nightRate").forEach((i) => sum += toCents(i.value));
       el("rent2Sum").textContent = nzd(sum);
       return sum;
     }
+
     function robustCopy(textareaId) {
       const ta = el(textareaId);
       ta.removeAttribute("readonly");
@@ -452,11 +457,14 @@
     function detectScenario(os, oe, ns, ne, propOld, propNew) {
       const hasBothProps = (propOld && propNew);
       if (hasBothProps && propOld !== propNew) return { key: 'rehouse', label: 'Rehouse', gstWaived: true };
+
       const origN = (os && oe) ? nightsBetween(os, oe) : 0;
       const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
       const overlap = overlaps(os, oe, ns, ne);
+
       if (overlap && newN > origN) return { key: 'extension', label: 'Extension', gstWaived: false };
       if (overlap && newN < origN) return { key: 'ron', label: 'Reduction of Nights', gstWaived: false };
+
       return { key: 'change', label: 'Change of Date', gstWaived: false };
     }
 
@@ -490,6 +498,7 @@
 
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
+      // Dates & nights
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
       const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
       const origN = (os && oe) ? nightsBetween(os, oe) : 0;
@@ -497,25 +506,35 @@
       el("origNights").textContent = origN;
       el("newNights").textContent  = newN;
 
+      // Rebuild nightly grid if needed
       if (rebuildDates) {
-        const nsStr = el("newStart").value || "", neStr = el("newEnd").value || "";
-        if (nsStr !== lastNewStart || neStr !== lastNewEnd) { buildNightlyInputs(); lastNewStart = nsStr; lastNewEnd = neStr; }
+        const nsStr = el("newStart").value || "";
+        const neStr = el("newEnd").value || "";
+        if (nsStr !== lastNewStart || neStr !== lastNewEnd) {
+          buildNightlyInputs();
+          lastNewStart = nsStr; lastNewEnd = neStr;
+        }
       }
 
       const ch = currentChannel();
       const direct = ch.key === 'direct';
       toggleOriginalUI(direct);
+
+      // Modals
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
 
+      // Settings/toggles
       const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
       const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071");
       const amendFeeEachC = toCents(el("amendFeeEach")?.value || "28.75");
       const amendCount = parseInt(el("amendCount2")?.value || "0", 10) || 0;
       const includeOwnerGST = !!el("includeOwnerGST")?.checked;
 
+      // Properties
       const propOld = (el("propIdOld")?.value || "").trim();
       const propNew = (el("propIdNew")?.value || "").trim();
 
+      // Original booking (Direct) — GEL removed
       const b1 = {
         rent: toCents(el("rent1").value),
         linen: toCents(el("linen1").value),
@@ -524,43 +543,56 @@
         addInfo: (el("addInfo1").value || "").trim(),
         addAmt: toCents(el("addAmt1").value)
       };
-      const gel1 = 0; // GEL now part of entered Rent for Original Booking
+      const gel1 = 0;
 
+      // New booking (sum nightly)
       const rent2 = sumNightly();
       const gel2 = (ns && ne) ? nightsBetween(ns, ne) * GEL_PER_NIGHT_C : 0;
 
+      // Booking Fee auto
       const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
       const fee2 = Math.min(fee2RawC, BOOKING_FEE_CAP_C);
 
       const b2 = {
-        rent: rent2, linen: toCents(el("linen2").value), clean: toCents(el("clean2").value),
-        fee: fee2, addInfo: (el("addInfo2").value || "").trim(), addAmt: toCents(el("addAmt2").value)
+        rent: rent2,
+        linen: toCents(el("linen2").value),
+        clean: toCents(el("clean2").value),
+        fee: fee2,
+        addInfo: (el("addInfo2").value || "").trim(),
+        addAmt: toCents(el("addAmt2").value)
       };
 
+      // Markups
       const ownerGST1C_forMarkup = Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C_forMarkup = Math.round(b2.rent * ownerGSTRate);
       const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee + gel1) * ch.markup);
       const markup2C = Math.round((b2.rent + ownerGST2C_forMarkup + b2.fee + gel2) * ch.markup);
 
+      // Owner GST
       const ownerGST1C = Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C = Math.round(b2.rent * ownerGSTRate);
 
+      // Amendment
       const amendTotalC = Math.max(0, amendCount) * amendFeeEachC;
 
+      // Totals
       let total1;
       if (direct) {
-        total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C; // GEL excluded
+        total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C;
       } else {
-        const otaC = toCents(el("otaTotal1")?.value || 0); total1 = otaC;
+        const otaC = toCents(el("otaTotal1")?.value || 0);
+        total1 = otaC;
       }
       const total2Base = b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + amendTotalC;
       const total2 = includeOwnerGST ? (total2Base + ownerGST2C) : total2Base;
       const diff   = total2 - total1;
 
+      // Scenario
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
       maybeShowDirect30Policy(ch.key, scen.key, os);
 
+      // UI breakdowns
       el("obRent").textContent   = nzd(b1.rent);
       el("obLinen").textContent  = nzd(b1.linen);
       el("obClean").textContent  = nzd(b1.clean);
@@ -579,31 +611,39 @@
       el("ownerGST2").textContent = nzd(ownerGST2C);
       el("nbAmend").textContent = amendCount > 0 ? nzd(amendTotalC) : "Waived";
 
-      el("total1").textContent = nzd(total1);
-      el("total2").textContent = nzd(total2);
+      el("total1").textContent   = nzd(total1);
+      el("total2").textContent   = nzd(total2);
       el("tile1").textContent = nzd(total1);
       el("tile2").textContent = nzd(total2);
       el("tile3").textContent = nzd(Math.abs(diff));
       el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
       el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
 
+      // ---- Finance Breakdown (HTML + Preview) ----
       const header =
         "<b>Booking Breakdown</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
         `<b>Scenario:</b> ${scen.label}<br><br>`;
 
+      // Date lines for each section
+      const origDatesLine = (os && oe) ? `Check-in: ${dtIso(os)} &nbsp;|&nbsp; Check-out: ${dtIso(oe)} &nbsp;|&nbsp; Nights: ${origN}<br>` : "";
+      const newDatesLine  = (ns && ne) ? `Check-in: ${dtIso(ns)} &nbsp;|&nbsp; Check-out: ${dtIso(ne)} &nbsp;|&nbsp; Nights: ${newN}<br>` : "";
+
       const originalHtml = (ch.key === 'direct')
         ? "<b>Original Booking</b><br>" +
+          origDatesLine +
           `Rent: ${nzd(b1.rent)}<br>` +
           `Linen: ${nzd(b1.linen)}<br>` +
           `Cleaning: ${nzd(b1.clean)}<br>` +
           `Booking Fee: ${nzd(b1.fee)}<br>` +
           `Total: ${nzd(total1)}<br><br>`
         : "<b>Original Booking</b><br>" +
+          origDatesLine +
           `Total Holiday Cost: ${nzd(total1)}<br><br>`;
 
       const newHtml =
         "<b>New Booking</b><br>" +
+        newDatesLine +
         `Rent (sum nights): ${nzd(b2.rent)}<br>` +
         `GEL: ${nzd(gel2)}<br>` +
         (includeOwnerGST ? `Owner GST Total: ${nzd(ownerGST2C)}<br>` : "") +
@@ -621,6 +661,7 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
+      // ---- Direct-only pre-drafted email (unchanged here) ----
       if (direct) {
         const rentOriginalEmailC = b1.rent + (includeOwnerGST ? ownerGST1C : 0);
         const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
@@ -657,6 +698,7 @@ Bachcare Team`;
         el("guestEmail").value = "";
       }
 
+      // Reflect fee2 read-only
       el("fee2").value = (b2.fee / 100).toFixed(2);
     }
 
@@ -672,7 +714,7 @@ Bachcare Team`;
       });
     });
 
-    // ---------- Calendars ----------
+    // ---------- Calendars (Flatpickr) ----------
     function attachCalendars() {
       const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
       if (window.flatpickr) {
