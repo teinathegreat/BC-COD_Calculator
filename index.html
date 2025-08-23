@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- Bachcare Calculator — Base Working Version (v0.1) -->
-<!-- v0.1: Header says "Booking Breakdown" and adds an extra <br> after Scenario for separation -->
+<!-- v0.1: Add Booking Fee Rate (0.071) setting; fee2 = (rent2 + GEL) * rate with $299 cap; keep all existing behavior -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -213,6 +213,11 @@
           <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
           <div class="mini">Not applied in Rehouse (GST waived).</div>
         </section>
+        <section class="card mb-4">
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Booking Fee Rate</span></div>
+          <input type="text" id="bookingFeeRate" value="0.071" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
+          <div class="mini">Used for <b>New Booking</b>: Booking Fee = (Rent + GEL) × rate. Capped at $299.</div>
+        </section>
         <section class="card">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Channel Markups</span></div>
           <div class="grid grid-cols-3 gap-2">
@@ -407,6 +412,7 @@
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
 
       const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0");
+      const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071"); // new setting (default 7.1%)
 
       // ORIGINAL booking
       const b1 = {
@@ -421,8 +427,12 @@
 
       // NEW booking (sum nightly)
       const rent2 = sumNightly();
-      let fee2 = 4000; // default $40; apply your precise rule if needed
-      fee2 = Math.min(fee2, BOOKING_FEE_CAP_C);
+      const gel2 = newN * GEL_PER_NIGHT_C;
+
+      // Booking Fee auto-calc: (Rent + GEL) * rate, capped at $299
+      const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
+      let fee2 = Math.min(fee2RawC, BOOKING_FEE_CAP_C);
+
       const b2 = {
         rent: rent2,
         linen: toCents(el("linen2").value),
@@ -432,7 +442,6 @@
         addAmt: toCents(el("addAmt2").value)
       };
       el("fee2").value = (fee2 / 100).toFixed(2);
-      const gel2 = newN * GEL_PER_NIGHT_C;
 
       // Channel markup (owner GST on rent not applied when GST is waived only for Rehouse)
       const isRehouse = scen.key === 'rehouse';
@@ -553,7 +562,7 @@
       syncMarkupsToDropdown();
 
       // Inputs that recompute WITHOUT rebuilding nightly grid
-      ["channel","ownerGSTRate","linen1","clean1","rent1","fee1","addInfo1","addAmt1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew"]
+      ["channel","ownerGSTRate","bookingFeeRate","linen1","clean1","rent1","fee1","addInfo1","addAmt1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
 
       // Dates trigger recompute WITH nightly grid rebuild
