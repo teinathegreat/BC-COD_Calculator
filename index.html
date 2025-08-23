@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.12) -->
-<!-- v0.12: Direct email = "Rent" line shows Rent+GEL(+Owner GST if included); New block also lists Amendment Fee when present -->
+<!-- Bachcare Calculator — Base Working Version (v0.13) -->
+<!-- v0.13: Fix scenario badge by using real prop IDs; include scenario in guest email & breakdown -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.12)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.13)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -67,7 +67,7 @@
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights">0</span></div>
           </section>
 
-        <section class="card">
+          <section class="card">
             <h2 class="text-xl font-semibold mb-3">New Dates</h2>
             <label class="block"><span class="text-sm font-medium text-gray-700">Start</span>
               <input type="text" id="newStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
@@ -308,7 +308,7 @@
     </div>
   </div>
 
-  <!-- (Other OTA modals preserved as in previous versions) -->
+  <!-- (Other OTA guidance modals unchanged) -->
 
   <script>
     // ---------- Helpers ----------
@@ -462,8 +462,6 @@
       }
     }
 
-    // (OTA guidance modals not shown here to keep focus on the requested change; logic retained from prior version)
-
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
       // Dates & nights
@@ -488,7 +486,7 @@
       const direct = ch.key === 'direct';
       toggleOriginalUI(direct);
 
-      // Direct non-overlap modal
+      // Modal for Direct non-overlap
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
 
       // Settings & toggles
@@ -499,6 +497,9 @@
       const includeOwnerGST = !!el("includeOwnerGST")?.checked;
 
       // ORIGINAL booking (Direct fields)
+      const propOld = (el("propIdOld")?.value || "").trim();
+      const propNew = (el("propIdNew")?.value || "").trim();
+
       const b1 = {
         rent: toCents(el("rent1").value),
         linen: toCents(el("linen1").value),
@@ -551,6 +552,10 @@
       const total2 = includeOwnerGST ? (total2Base + ownerGST2C) : total2Base;
       const diff   = total2 - total1;
 
+      // ---- Scenario (now using real property IDs) ----
+      const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
+      el("scenarioBadge").textContent = scen.label;
+
       // ---- UI breakdowns ----
       el("obRent").textContent   = nzd(b1.rent);
       el("obLinen").textContent  = nzd(b1.linen);
@@ -580,7 +585,6 @@
       el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
 
       // ---- Finance Breakdown (HTML + Preview) ----
-      const scen = detectScenario(os, oe, ns, ne, '', '');
       const header =
         "<b>Booking Breakdown</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
@@ -616,7 +620,7 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // ---- Direct-only pre-drafted email ----
+      // ---- Direct-only pre-drafted email (now includes Scenario) ----
       if (direct) {
         const rentOriginalEmailC =
           b1.rent + gel1 + (includeOwnerGST ? ownerGST1C : 0);
@@ -628,7 +632,8 @@
 
 Hi there,
 
-Thank you for your request. Please find a clear comparison of your original booking and the updated booking below.
+Thank you for your request. Scenario: **${scen.label}**.
+Below is a clear comparison of your original booking and the updated booking.
 
 — Original Booking —
 • Rent: ${nzd(rentOriginalEmailC)}
