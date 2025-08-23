@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.18) -->
-<!-- v0.18: Sessions moved to top + Reset; Amendment Fee direct-only (greyed/disabled for OTAs); ensure Channel Markup line in New Booking breakdown for OTAs -->
+<!-- Bachcare Calculator — Base Working Version (v0.19) -->
+<!-- v0.19: Sessions moved to its own tab; title changed to "Booking Adjustment Calculator"; itinerary note dates use NZ dd/mm/yyyy format -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.18)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.19)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -33,38 +33,20 @@
 </head>
 <body class="bg-gray-50">
   <div class="min-h-screen w-full max-w-6xl mx-auto p-6">
-    <h1 class="text-3xl font-bold tracking-tight mb-4">Rehouse / Date Change, RON & Extension Calculator (NZD)</h1>
+    <h1 class="text-3xl font-bold tracking-tight mb-4">Booking Adjustment Calculator (NZD)</h1>
 
     <!-- Tabs -->
-    <div class="flex mb-2">
+    <div class="flex mb-2 gap-2">
       <button class="tab active" data-tab="calcPane">Calculator</button>
       <button class="tab" data-tab="settingsPane">Settings</button>
+      <button class="tab" data-tab="sessionsPane">Sessions</button>
     </div>
 
     <div class="tabpanes bg-white rounded-xl">
       <!-- Calculator Pane -->
       <div id="calcPane" class="p-4">
-        <!-- Sessions (moved to top) + Platform + Reset -->
-        <div class="mb-4 grid grid-cols-1 lg:grid-cols-3 gap-3 items-end">
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-700">Saved Sessions</label>
-            <select id="sessionPicker" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white">
-              <option value="">— none —</option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-700">Name</label>
-            <input id="sessionName" type="text" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white" placeholder="e.g. Smith 23–28 Aug"/>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button id="sessionSave" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Save as New / Overwrite</button>
-            <button id="sessionLoad" class="px-3 py-2 rounded-xl bg-blue-600 text-white">Load</button>
-            <button id="sessionDelete" class="px-3 py-2 rounded-xl bg-red-600 text-white">Delete</button>
-            <button id="resetBtn" class="px-3 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">Reset</button>
-          </div>
-        </div>
-
-        <div class="mb-4 flex flex-wrap items-center gap-3">
+        <!-- Platform + Reset -->
+        <div class="mb-4 flex flex-wrap items-end gap-3">
           <label class="text-sm text-gray-700">
             Platform
             <select id="channel" class="ml-2 px-3 py-2 rounded-xl border border-gray-300 bg-white align-middle">
@@ -74,6 +56,7 @@
               <option value="airbnb|Airbnb|0.255">Airbnb</option>
             </select>
           </label>
+          <button id="resetBtn" class="px-3 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">Reset</button>
         </div>
 
         <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -304,6 +287,31 @@
           <div class="mini">Changing these updates the Platform dropdown on the Calculator tab.</div>
         </section>
       </div>
+
+      <!-- Sessions Pane (NEW) -->
+      <div id="sessionsPane" class="p-4 hidden">
+        <section class="card">
+          <h2 class="text-lg font-semibold mb-3">Save / Load / Delete Sessions</h2>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-end">
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-700">Saved Sessions</label>
+              <select id="sessionPicker" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white">
+                <option value="">— none —</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-700">Name</label>
+              <input id="sessionName" type="text" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white" placeholder="e.g. Smith 23–28 Aug"/>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="sessionSave" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Save as New / Overwrite</button>
+              <button id="sessionLoad" class="px-3 py-2 rounded-xl bg-blue-600 text-white">Load</button>
+              <button id="sessionDelete" class="px-3 py-2 rounded-xl bg-red-600 text-white">Delete</button>
+            </div>
+          </div>
+          <div class="mini mt-2">Sessions are stored locally in your browser. Nightly “Daily Modifier Rates” are included.</div>
+        </section>
+      </div>
     </div>
   </div>
 
@@ -376,6 +384,14 @@
       const tryD = new Date(v); return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
     }
     const dtIso = (d) => d.toISOString().slice(0, 10);
+    function dtNZ(d){
+      // returns dd/mm/yyyy
+      if(!(d instanceof Date) || isNaN(d)) return "";
+      const dd = String(d.getUTCDate()).padStart(2,'0');
+      const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+      const yy = d.getUTCFullYear();
+      return `${dd}/${mm}/${yy}`;
+    }
     const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
     const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
 
@@ -387,7 +403,7 @@
     let lastDirectModalKey = "";
     let lastDirect30Key = "";
 
-    // Sessions storage
+    // ---------- Sessions (localStorage) ----------
     const SESS_KEY = "bachcareCalc:sessions";
     function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
     function writeSessions(obj){ localStorage.setItem(SESS_KEY, JSON.stringify(obj||{})); refreshSessionPicker(); }
@@ -472,6 +488,7 @@
       alert(`Deleted session: ${name}`);
     }
 
+    // ---------- UI helpers ----------
     function resetCalculator(){
       // Clear only Calculator pane inputs (keep Settings)
       document.querySelectorAll("#calcPane input, #calcPane textarea, #calcPane select").forEach(node=>{
@@ -479,7 +496,6 @@
         if(node.type === "checkbox") node.checked = false;
         else node.value = "";
       });
-      // clear nightly grid + amend count
       el("nightlyGrid").innerHTML = "";
       el("rent2Sum").textContent = nzd(0);
       if (el("amendCount2")) el("amendCount2").value = 0;
@@ -756,8 +772,8 @@
 
       const origNights = (os && oe) ? nightsBetween(os, oe) : 0;
       const newNights  = (ns && ne) ? nightsBetween(ns, ne) : 0;
-      const origDatesLine = (os && oe) ? `Check-in: ${dtIso(os)} &nbsp;|&nbsp; Check-out: ${dtIso(oe)} &nbsp;|&nbsp; Nights: ${origNights}<br>` : "";
-      const newDatesLine  = (ns && ne) ? `Check-in: ${dtIso(ns)} &nbsp;|&nbsp; Check-out: ${dtIso(ne)} &nbsp;|&nbsp; Nights: ${newNights}<br>` : "";
+      const origDatesLine = (os && oe) ? `Check-in: ${dtNZ(os)} &nbsp;|&nbsp; Check-out: ${dtNZ(oe)} &nbsp;|&nbsp; Nights: ${origNights}<br>` : "";
+      const newDatesLine  = (ns && ne) ? `Check-in: ${dtNZ(ns)} &nbsp;|&nbsp; Check-out: ${dtNZ(ne)} &nbsp;|&nbsp; Nights: ${newNights}<br>` : "";
 
       const originalHtml = (ch.key === 'direct')
         ? "<b>Original Booking</b><br>" +
@@ -771,7 +787,6 @@
           origDatesLine +
           `Total Holiday Cost: ${nzd(total1)}<br><br>`;
 
-      // Always include Channel Markup line in New Booking (covers OTAs as requested)
       const newHtml =
         "<b>New Booking</b><br>" +
         newDatesLine +
@@ -793,7 +808,7 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // ---- Direct-only pre-drafted email (unchanged) ----
+      // ---- Direct-only pre-drafted email ----
       if (direct) {
         const rentOriginalEmailC = b1.rent + (includeOwnerGST ? ownerGST1C : 0);
         const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
@@ -862,10 +877,12 @@ Bachcare Team`;
     document.querySelectorAll('.tab').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        btn.addEventListener
         btn.classList.add('active');
         const target = btn.getAttribute('data-tab');
         document.getElementById('calcPane').classList.add('hidden');
         document.getElementById('settingsPane').classList.add('hidden');
+        document.getElementById('sessionsPane').classList.add('hidden');
         document.getElementById(target).classList.remove('hidden');
       });
     });
@@ -892,7 +909,7 @@ Bachcare Team`;
       el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
       el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
 
-      // Sessions
+      // Sessions (in Sessions tab)
       refreshSessionPicker();
       el("sessionSave").addEventListener("click", ()=> saveSessionNamed(el("sessionName").value.trim() || el("sessionPicker").value.trim()));
       el("sessionLoad").addEventListener("click", ()=> loadSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
