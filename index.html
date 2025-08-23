@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.8) -->
-<!-- v0.8: Fix OTA toggle bug; hide & disable Direct-only Original Booking fields for Airbnb/Booking.com/VRBO -->
+<!-- Bachcare Calculator — Base Working Version (v0.10) -->
+<!-- v0.10: OTA rules – active-stay extension by phone; non-active extension = portal flow; free-cancel windows (B.com 7d / Airbnb 30d) with TL approval; one-time documentation reminder -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.8)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.10)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -274,7 +274,7 @@
     </div>
   </div>
 
-  <!-- Modal for Bachcare Direct non-overlap -->
+  <!-- Modal: Bachcare Direct non-overlap -->
   <div id="directModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc">
     <div class="modal">
       <div class="p-6">
@@ -300,6 +300,113 @@
     </div>
   </div>
 
+  <!-- Modal: Airbnb/Booking.com ACTIVE-STAY EXTENSION -->
+  <div id="otaExtActiveModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="oea-title" aria-describedby="oea-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-amber-50 border border-amber-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M4.93 4.93l14.14 14.14" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="oea-title" class="text-xl font-semibold text-gray-900">Process extension by phone</h3>
+            <p id="oea-desc" class="mt-2 text-gray-700">
+              This is an <b>Airbnb/Booking.com</b> booking and you’re processing an <b>extension during the active stay</b>.
+              Their portals don’t support last-minute extensions — please <b>take payment by phone</b>.
+            </p>
+            <p class="mt-2 text-gray-700">
+              Also create a <b>workflow to Finance</b> explaining that a <b>partial payment</b> was taken by phone while the rest will arrive via the portal.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="oeaClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Airbnb/Booking.com DATE CHANGE guidance (also used for non-active extensions) -->
+  <div id="otaChangeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ocm-title" aria-describedby="ocm-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-sky-50 border border-sky-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4M16 15l-4 4-4-4" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="ocm-title" class="text-xl font-semibold text-gray-900">Guest must request change in portal</h3>
+            <p id="ocm-desc" class="mt-2 text-gray-700">
+              For <b>Airbnb/Booking.com</b> date changes (and <b>extensions when the stay isn’t active</b>), ask the guest to <b>request the change via the portal</b>.
+              We’ll <b>accept</b> it on our side — their system will calculate the correct amount, so <b>you don’t need this calculator</b>.
+            </p>
+            <p class="mt-2 text-gray-700">
+              Once approved, update the booking in <b>Enterprise</b> to match the portal and <b>copy the portal breakdown</b> into itinerary notes.
+              Create a <b>workflow to Finance</b> to adjust the Enterprise breakdown.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="ocmClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Free-cancellation window (seek TL approval) -->
+  <div id="freeCancelModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="fcm-title" aria-describedby="fcm-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-rose-50 border border-rose-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="fcm-title" class="text-xl font-semibold text-gray-900">Outside free cancellation period</h3>
+            <p id="fcm-desc" class="mt-2 text-gray-700">
+              This <b><span id="fcm-channel-label">OTA</span></b> <b><span id="fcm-action-label">change</span></b> is within the
+              free cancellation window: <b><span id="fcm-window-label">—</span></b>. Please <b>seek Team Leader approval</b> before proceeding.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="fcmClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: One-time documentation reminder -->
+  <div id="docReminderModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="drm-title" aria-describedby="drm-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-emerald-50 border border-emerald-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7 20h10" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="drm-title" class="text-xl font-semibold text-gray-900">Remember to document</h3>
+            <p id="drm-desc" class="mt-2 text-gray-700">
+              For any OTA <b>date changes, reductions, or extensions</b>, add clear notes to the <b>itinerary</b>. 
+              <b>Copy the portal’s breakdown</b> into notes and create a <b>workflow to Finance</b> so the Enterprise booking breakdown can be adjusted.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="drmClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ---------- Helpers ----------
     const el = (id) => document.getElementById(id);
@@ -311,6 +418,10 @@
     const nzd = (c) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format((c || 0) / 100);
     const DAY = 86400000;
 
+    function todayUTC() {
+      const n = new Date();
+      return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+    }
     // Accept dd/mm/yyyy or yyyy-mm-dd; strict, timezone-safe
     function getDateVal(id) {
       const v = (el(id)?.value || "").trim();
@@ -328,13 +439,15 @@
     const BOOKING_FEE_CAP_C = 29900;     // $299 cap
     let lastNewStart = "", lastNewEnd = "";
     let lastDirectModalKey = "";
+    let lastOtaExtActiveKey = "";
+    let lastOtaChangeKey = "";
+    let lastFreeCancelKey = "";
+    let docReminderShown = false;
 
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
       return { key, label, markup: parseFloat(mu) || 0 };
     }
-    function isDirectPlatform(){ return currentChannel().key === 'direct'; }
-
     function syncMarkupsToDropdown(){
       const air = parseFloat(el('mkAirbnb')?.value||'0')/100;
       const bc  = parseFloat(el('mkBcom')?.value||'0')/100;
@@ -348,27 +461,24 @@
       });
     }
 
-    // Enable/disable all inputs under a container
     function setInputsDisabled(containerId, disabled){
       const cont = el(containerId);
       if(!cont) return;
       cont.querySelectorAll('input, select, textarea, button').forEach(n=>{
-        if(n.id === 'otaTotal1' && disabled) return; // keep OTA total usable when OTA
+        if(n.id === 'otaTotal1' && disabled) return;
         n.disabled = disabled;
       });
       cont.classList.toggle('disabled-soft', disabled);
     }
-
-    // Toggle Original Booking UI by platform
     function toggleOriginalUI(direct){
       el("obDirectFields").classList.toggle("hidden-soft", !direct);
       el("obBreakdown").classList.toggle("hidden-soft", !direct);
-      setInputsDisabled("obDirectFields", !direct); // disable when not direct
+      setInputsDisabled("obDirectFields", !direct);
       setInputsDisabled("obBreakdown",   !direct);
 
       el("obOtaFields").classList.toggle("hidden-soft", direct);
       el("obOtaSummary").classList.toggle("hidden-soft", direct);
-      setInputsDisabled("obOtaFields", direct); // disable OTA block when direct
+      setInputsDisabled("obOtaFields", direct);
       setInputsDisabled("obOtaSummary", direct);
     }
 
@@ -434,18 +544,91 @@
       return { key: 'change', label: 'Change of Date', gstWaived: false };
     }
 
-    // ---------- Bachcare Direct non-overlap popup ----------
+    // ---------- Popups ----------
     function maybeShowDirectModal(chKey, os, oe, ns, ne) {
       const modal = el('directModal');
       if (!modal) return;
       if (!os || !oe || !ns || !ne) return;
       const noOverlap = !(overlaps(os, oe, ns, ne));
-      const key = `${chKey}|${os.toISOString()}|${oe.toISOString()}|${ns.toISOString()}|${ne.toISOString()}`;
+      const key = `${chKey}|${os?.toISOString()}|${oe?.toISOString()}|${ns?.toISOString()}|${ne?.toISOString()}`;
       if (chKey === 'direct' && noOverlap && lastDirectModalKey !== key) {
         lastDirectModalKey = key;
         modal.classList.remove('hidden');
         setTimeout(()=> el('dmClose')?.focus(), 0);
       }
+    }
+
+    function maybeShowOtaExtensionActive(chKey, scenKey, os, oe){
+      if(!(chKey==='airbnb' || chKey==='bcom')) return;
+      if(scenKey !== 'extension') return;
+      if(!os || !oe) return;
+      const t = todayUTC();
+      const within = (t >= os) && (t < oe); // active stay
+      if(!within) return;
+      const key = `${chKey}|extactive|${os.toISOString()}|${oe.toISOString()}`;
+      if(lastOtaExtActiveKey === key) return;
+      lastOtaExtActiveKey = key;
+      el('otaExtActiveModal')?.classList.remove('hidden');
+      setTimeout(()=> el('oeaClose')?.focus(), 0);
+    }
+
+    // For non-active extension, reuse portal change modal
+    function maybeShowOtaExtensionNonActive(chKey, scenKey, os, oe){
+      if(!(chKey==='airbnb' || chKey==='bcom')) return;
+      if(scenKey !== 'extension') return;
+      if(!os || !oe) return;
+      const t = todayUTC();
+      const within = (t >= os) && (t < oe);
+      if(within) return; // handled by active modal
+      const key = `${chKey}|extnonactive|${os.toISOString()}|${oe.toISOString()}`;
+      if(lastOtaChangeKey === key) return; // reuse same dedupe var
+      lastOtaChangeKey = key;
+      el('otaChangeModal')?.classList.remove('hidden');
+      setTimeout(()=> el('ocmClose')?.focus(), 0);
+    }
+
+    function maybeShowOtaChange(chKey, scenKey, os, oe, ns, ne){
+      if(!(chKey==='airbnb' || chKey==='bcom')) return;
+      if(scenKey !== 'change') return;
+      if(!os || !oe || !ns || !ne) return;
+      const key = `${chKey}|change|${os.toISOString()}|${oe.toISOString()}|${ns.toISOString()}|${ne.toISOString()}`;
+      if(lastOtaChangeKey === key) return;
+      lastOtaChangeKey = key;
+      el('otaChangeModal')?.classList.remove('hidden');
+      setTimeout(()=> el('ocmClose')?.focus(), 0);
+    }
+
+    // Free-cancellation modals (TL approval)
+    function maybeShowFreeCancel(chKey, scenKey, os){
+      if(!(chKey==='airbnb' || chKey==='bcom')) return;
+      if(!(scenKey==='change' || scenKey==='ron')) return;
+      if(!os) return;
+      const t = todayUTC();
+      const daysUntilStart = Math.floor((os - t)/DAY);
+      // Only if start is in the future AND within the channel-specific window
+      let windowDays = (chKey==='bcom') ? 7 : 30;
+      if(daysUntilStart < 0 || daysUntilStart > windowDays) return;
+      const key = `${chKey}|fcan|${scenKey}|${os.toISOString()}|${windowDays}`;
+      if(lastFreeCancelKey === key) return;
+      lastFreeCancelKey = key;
+
+      // Fill labels
+      el('fcm-channel-label').textContent = (chKey==='bcom') ? 'Booking.com' : 'Airbnb';
+      el('fcm-action-label').textContent = (scenKey==='ron') ? 'reduction' : 'date change';
+      el('fcm-window-label').textContent = (chKey==='bcom') ? 'within 7 days of start' : 'within 30 days of start';
+
+      el('freeCancelModal')?.classList.remove('hidden');
+      setTimeout(()=> el('fcmClose')?.focus(), 0);
+    }
+
+    // One-time documentation reminder (any OTA change/ron/extension)
+    function maybeShowDocReminder(chKey, scenKey){
+      if(docReminderShown) return;
+      if(!(chKey==='airbnb' || chKey==='bcom' || chKey==='vrbo')) return;
+      if(!(scenKey==='change' || scenKey==='ron' || scenKey==='extension')) return;
+      docReminderShown = true;
+      el('docReminderModal')?.classList.remove('hidden');
+      setTimeout(()=> el('drmClose')?.focus(), 0);
     }
 
     // ---------- Main compute ----------
@@ -461,7 +644,7 @@
       // Rebuild nightly grid ONLY if date strings changed
       if (rebuildDates) {
         const nsStr = el("newStart").value || "";
-        const neStr = el("newEnd").value || "";   // <- fixed typo
+        const neStr = el("newEnd").value || "";
         if (nsStr !== lastNewStart || neStr !== lastNewEnd) {
           buildNightlyInputs();
           lastNewStart = nsStr; lastNewEnd = neStr;
@@ -474,12 +657,17 @@
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
 
-      // Toggle direct vs OTA fields (and enable/disable inputs)
+      // Toggle direct vs OTA fields
       const direct = ch.key === 'direct';
       toggleOriginalUI(direct);
 
-      // Show advisory modal for Bachcare Direct non-overlap
+      // Popups per rules
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
+      maybeShowOtaExtensionActive(ch.key, scen.key, os, oe);
+      maybeShowOtaExtensionNonActive(ch.key, scen.key, os, oe);
+      maybeShowOtaChange(ch.key, scen.key, os, oe, ns, ne);
+      maybeShowFreeCancel(ch.key, scen.key, os);
+      maybeShowDocReminder(ch.key, scen.key);
 
       // Settings & toggles
       const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
@@ -523,15 +711,13 @@
       const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee + gel1) * ch.markup);
       const markup2C = Math.round((b2.rent + ownerGST2C_forMarkup + b2.fee + gel2) * ch.markup);
 
-      // Owner GST Total (display or included)
+      // Owner GST Total
       const ownerGST2C = Math.round(b2.rent * ownerGSTRate);
 
       // Amendment total
       const amendTotalC = Math.max(0, amendCount) * amendFeeEachC;
 
-      // Totals:
-      //  - Direct: build from parts (no GST in totals).
-      //  - OTA: total1 is provided Total Holiday Cost; ignore internal parts/markup/gel.
+      // Totals
       let total1;
       if (direct) {
         total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + gel1 + markup1C;
@@ -545,7 +731,6 @@
       const diff   = total2 - total1;
 
       // ---- UI breakdowns ----
-      // Direct original rows
       el("obRent").textContent   = nzd(b1.rent);
       el("obLinen").textContent  = nzd(b1.linen);
       el("obClean").textContent  = nzd(b1.clean);
@@ -553,11 +738,8 @@
       el("obAdd").textContent    = nzd(b1.addAmt);
       el("gelAuto1").textContent = nzd(gel1);
       el("obMarkup").textContent = nzd(markup1C);
-
-      // OTA original summary
       el("obOtaTotal").textContent = nzd(total1);
 
-      // New booking rows
       el("nbRent").textContent   = nzd(b2.rent);
       el("nbLinen").textContent  = nzd(b2.linen);
       el("nbClean").textContent  = nzd(b2.clean);
@@ -568,7 +750,6 @@
       el("ownerGST2").textContent = nzd(ownerGST2C);
       el("nbAmend").textContent = amendCount > 0 ? nzd(amendTotalC) : "Waived";
 
-      // Totals + tiles
       el("total1").textContent   = nzd(total1);
       el("total2").textContent   = nzd(total2);
       el("tile1").textContent = nzd(total1);
@@ -583,61 +764,38 @@
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
         `<b>Scenario:</b> ${scen.label}${isRehouse ? " (GST waived for markup basis)" : ""}<br><br>`;
 
-      // Property ID placement per section; suppress if same non-empty
-      const idsSame = propOld && propNew && (propOld === propNew);
-
+      const idsSame = (propOld && propNew && propOld === propNew);
       const add1 = b1.addAmt > 0 ? `${b1.addInfo || "Additional charge"}: ${nzd(b1.addAmt)}<br>` : "";
       const add2 = b2.addAmt > 0 ? `${b2.addInfo || "Additional charge"}: ${nzd(b2.addAmt)}<br>` : "";
-
-      const ownerGSTRatePct = (ownerGSTRate * 100).toFixed(2);
+      const ownerGSTRatePct = (parseFloat(el("ownerGSTRate")?.value || "0.15") * 100).toFixed(2);
       const ownerGSTNote = includeOwnerGST ? "(included)" : "(display-only)";
-
-      // Original block (direct vs OTA)
       const origIdLine = (!idsSame && propOld) ? `<b>Original Property ID:</b> ${propOld}<br>` : "";
       const originalHtml = (ch.key === 'direct')
-        ? (
-          origIdLine +
-          "<b>Original Booking</b><br>" +
-          `Rent: ${nzd(b1.rent)}<br>` +
-          `Linen: ${nzd(b1.linen)}<br>` +
-          `Cleaning: ${nzd(b1.clean)}<br>` +
-          `Booking Fee: ${nzd(b1.fee)}<br>` + add1 +
-          `GEL: ${nzd(gel1)}<br>` +
-          `Channel Markup: ${nzd(markup1C)}<br>` +
-          `Total: ${nzd(total1)}<br><br>`
-        )
-        : (
-          origIdLine +
-          "<b>Original Booking</b><br>" +
-          `Total Holiday Cost: ${nzd(total1)}<br><br>`
-        );
-
-      // New block
+        ? (origIdLine + "<b>Original Booking</b><br>" +
+           `Rent: ${nzd(b1.rent)}<br>Linen: ${nzd(b1.linen)}<br>Cleaning: ${nzd(b1.clean)}<br>` +
+           `Booking Fee: ${nzd(b1.fee)}<br>${add1}GEL: ${nzd(gel1)}<br>Channel Markup: ${nzd(markup1C)}<br>` +
+           `Total: ${nzd(total1)}<br><br>`)
+        : (origIdLine + "<b>Original Booking</b><br>" +
+           `Total Holiday Cost: ${nzd(total1)}<br><br>`);
       const newIdLine = (!idsSame && propNew) ? `<b>New Property ID:</b> ${propNew}<br>` : "";
       const amendLine = amendCount > 0 ? `Amendment Fee (${amendCount} × ${nzd(amendFeeEachC)}): ${nzd(amendTotalC)}<br>` : `Amendment Fee Waived<br>`;
       const newHtml =
-        newIdLine +
-        "<b>New Booking</b><br>" +
-        `Rent (sum nights): ${nzd(b2.rent)}<br>` +
-        `Linen: ${nzd(b2.linen)}<br>` +
-        `Cleaning: ${nzd(b2.clean)}<br>` +
-        `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` + add2 +
-        `GEL: ${nzd(gel2)}<br>` +
+        newIdLine + "<b>New Booking</b><br>" +
+        `Rent (sum nights): ${nzd(b2.rent)}<br>Linen: ${nzd(b2.linen)}<br>Cleaning: ${nzd(b2.clean)}<br>` +
+        `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>${add2}GEL: ${nzd(gel2)}<br>` +
         `Channel Markup: ${nzd(markup2C)}<br>` +
         `Owner GST Total (${ownerGSTRatePct}% ${ownerGSTNote}): ${nzd(ownerGST2C)}<br>` +
-        amendLine +
-        `Total: ${nzd(total2)}<br><br>`;
+        amendLine + `Total: ${nzd(total2)}<br><br>`;
 
       const outcomeHtml = diff >= 0
         ? `Amount to charge guest: ${nzd(diff)}<br>`
         : `Amount to refund guest: ${nzd(-diff)}<br>`;
 
       const html = header + originalHtml + newHtml + "<b>Outcome</b><br>" + outcomeHtml;
-
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // Reflect fee2 to read-only field
+      // Reflect fee2 read-only
       el("fee2").value = (b2.fee / 100).toFixed(2);
     }
 
@@ -655,13 +813,7 @@
 
     // ---------- Calendars (Flatpickr) ----------
     function attachCalendars() {
-      const opts = {
-        altInput: true,
-        altFormat: "d/m/Y",
-        dateFormat: "Y-m-d",
-        allowInput: true,
-        onChange: () => compute(true)
-      };
+      const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
       if (window.flatpickr) {
         flatpickr("#origStart", opts);
         flatpickr("#origEnd",   opts);
@@ -683,11 +835,21 @@
       ["origStart","origEnd","newStart","newEnd"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
 
-      // Modal close
-      el('dmClose').addEventListener('click', ()=> el('directModal').classList.add('hidden'));
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal').classList.add('hidden'); }});
+      // Modal closes
+      el('dmClose')?.addEventListener('click', ()=> el('directModal').classList.add('hidden'));
+      el('oeaClose')?.addEventListener('click', ()=> el('otaExtActiveModal').classList.add('hidden'));
+      el('ocmClose')?.addEventListener('click', ()=> el('otaChangeModal').classList.add('hidden'));
+      el('fcmClose')?.addEventListener('click', ()=> el('freeCancelModal').classList.add('hidden'));
+      el('drmClose')?.addEventListener('click', ()=> el('docReminderModal').classList.add('hidden'));
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){
+        el('directModal')?.classList.add('hidden');
+        el('otaExtActiveModal')?.classList.add('hidden');
+        el('otaChangeModal')?.classList.add('hidden');
+        el('freeCancelModal')?.classList.add('hidden');
+        el('docReminderModal')?.classList.add('hidden');
+      }});
 
-      // Copy button
+      // Copy
       el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
 
       // First run
