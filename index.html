@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.7) -->
-<!-- v0.7: Remove footer note; for OTA platforms show only Property ID + Total Holiday Cost in Original Booking card -->
+<!-- Bachcare Calculator — Base Working Version (v0.8) -->
+<!-- v0.8: Fix OTA toggle bug; hide & disable Direct-only Original Booking fields for Airbnb/Booking.com/VRBO -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.7)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.8)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -27,6 +27,7 @@
     .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
     .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
     .hidden-soft{display:none}
+    .disabled-soft{opacity:.5;pointer-events:none}
   </style>
 </head>
 <body class="bg-gray-50">
@@ -347,6 +348,30 @@
       });
     }
 
+    // Enable/disable all inputs under a container
+    function setInputsDisabled(containerId, disabled){
+      const cont = el(containerId);
+      if(!cont) return;
+      cont.querySelectorAll('input, select, textarea, button').forEach(n=>{
+        if(n.id === 'otaTotal1' && disabled) return; // keep OTA total usable when OTA
+        n.disabled = disabled;
+      });
+      cont.classList.toggle('disabled-soft', disabled);
+    }
+
+    // Toggle Original Booking UI by platform
+    function toggleOriginalUI(direct){
+      el("obDirectFields").classList.toggle("hidden-soft", !direct);
+      el("obBreakdown").classList.toggle("hidden-soft", !direct);
+      setInputsDisabled("obDirectFields", !direct); // disable when not direct
+      setInputsDisabled("obBreakdown",   !direct);
+
+      el("obOtaFields").classList.toggle("hidden-soft", direct);
+      el("obOtaSummary").classList.toggle("hidden-soft", direct);
+      setInputsDisabled("obOtaFields", direct); // disable OTA block when direct
+      setInputsDisabled("obOtaSummary", direct);
+    }
+
     // ---------- Nightly inputs ----------
     function buildNightlyInputs() {
       const s = getDateVal("newStart"), e = getDateVal("newEnd");
@@ -436,10 +461,10 @@
       // Rebuild nightly grid ONLY if date strings changed
       if (rebuildDates) {
         const nsStr = el("newStart").value || "";
-        the_neStr = el("newEnd").value || "";
-        if (nsStr !== lastNewStart || the_neStr !== lastNewEnd) {
+        const neStr = el("newEnd").value || "";   // <- fixed typo
+        if (nsStr !== lastNewStart || neStr !== lastNewEnd) {
           buildNightlyInputs();
-          lastNewStart = nsStr; lastNewEnd = the_neStr;
+          lastNewStart = nsStr; lastNewEnd = neStr;
         }
       }
 
@@ -449,12 +474,9 @@
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
 
-      // Toggle direct vs OTA fields
+      // Toggle direct vs OTA fields (and enable/disable inputs)
       const direct = ch.key === 'direct';
-      el("obDirectFields").classList.toggle("hidden-soft", !direct);
-      el("obBreakdown").classList.toggle("hidden-soft", !direct);
-      el("obOtaFields").classList.toggle("hidden-soft", direct);
-      el("obOtaSummary").classList.toggle("hidden-soft", direct);
+      toggleOriginalUI(direct);
 
       // Show advisory modal for Bachcare Direct non-overlap
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
