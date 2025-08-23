@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.1) -->
-<!-- v0.1: Add Booking Fee Rate (0.071) setting; fee2 = (rent2 + GEL) * rate with $299 cap; keep all existing behavior -->
+<!-- Bachcare Calculator — Base Working Version (v0.3) -->
+<!-- v0.3: Owner GST Total now uses adjustable Owner GST Rate from Settings (display-only; excluded from totals) -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.1)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.3)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -118,7 +118,7 @@
               <div class="row"><span class="text-gray-600">Additional Charges</span><span id="obAdd">$0.00</span></div>
               <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto1">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Channel Markup</span><span id="obMarkup">$0.00</span></div>
-              <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst1">$0.00</span></div>
+              <!-- GST removed from Original Booking -->
             </div>
             <div class="row mt-2"><span class="text-gray-600">Original Booking Total</span><span id="total1" class="font-semibold">$0.00</span></div>
           </section>
@@ -172,7 +172,7 @@
               <div class="row"><span class="text-gray-600">Additional Charges</span><span id="nbAdd">$0.00</span></div>
               <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Channel Markup</span><span id="nbMarkup">$0.00</span></div>
-              <div class="row"><span class="text-gray-600">GST (auto)</span><span id="gst2">$0.00</span></div>
+              <div class="row"><span class="text-gray-600">Owner GST Total</span><span id="ownerGST2">$0.00</span></div>
             </div>
             <div class="row mt-2"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold">$0.00</span></div>
           </section>
@@ -211,12 +211,12 @@
         <section class="card mb-4">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Owner GST Rate</span></div>
           <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Not applied in Rehouse (GST waived).</div>
+          <div class="mini">Used for Owner GST Total (display-only) and for markup basis.</div>
         </section>
         <section class="card mb-4">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Booking Fee Rate</span></div>
           <input type="text" id="bookingFeeRate" value="0.071" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Used for <b>New Booking</b>: Booking Fee = (Rent + GEL) × rate. Capped at $299.</div>
+          <div class="mini">New Booking Booking Fee = (Rent + GEL) × rate. Capped at $299.</div>
         </section>
         <section class="card">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Channel Markups</span></div>
@@ -282,7 +282,7 @@
 
     // ---------- Constants ----------
     const GEL_PER_NIGHT_C = 1200;        // $12/night in cents
-    const GST_RATE = 0.15;
+    const GST_RATE = 0.15;               // kept per constraint, though Owner GST Total uses ownerGSTRate setting
     const BOOKING_FEE_CAP_C = 29900;     // $299 cap
     let lastNewStart = "", lastNewEnd = ""; // protect nightly inputs while typing
     let lastDirectModalKey = "";           // avoid repeat popups for same date combo
@@ -370,14 +370,12 @@
     function maybeShowDirectModal(chKey, os, oe, ns, ne) {
       const modal = el('directModal');
       if (!modal) return;
-      // Only trigger when all dates are valid
       if (!os || !oe || !ns || !ne) return;
       const noOverlap = !(overlaps(os, oe, ns, ne));
       const key = `${chKey}|${os.toISOString()}|${oe.toISOString()}|${ns.toISOString()}|${ne.toISOString()}`;
       if (chKey === 'direct' && noOverlap && lastDirectModalKey !== key) {
         lastDirectModalKey = key;
         modal.classList.remove('hidden');
-        // focus the OK button for accessibility
         setTimeout(()=> el('dmClose')?.focus(), 0);
       }
     }
@@ -411,8 +409,9 @@
       // Show advisory modal for Bachcare Direct non-overlap
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
 
-      const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0");
-      const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071"); // new setting (default 7.1%)
+      // Settings
+      const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0.15"); // adjustable
+      const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071");
 
       // ORIGINAL booking
       const b1 = {
@@ -431,7 +430,7 @@
 
       // Booking Fee auto-calc: (Rent + GEL) * rate, capped at $299
       const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
-      let fee2 = Math.min(fee2RawC, BOOKING_FEE_CAP_C);
+      const fee2 = Math.min(fee2RawC, BOOKING_FEE_CAP_C);
 
       const b2 = {
         rent: rent2,
@@ -441,21 +440,20 @@
         addInfo: (el("addInfo2").value || "").trim(),
         addAmt: toCents(el("addAmt2").value)
       };
-      el("fee2").value = (fee2 / 100).toFixed(2);
 
-      // Channel markup (owner GST on rent not applied when GST is waived only for Rehouse)
+      // Channel markup (uses ownerGSTRate only for basis; still excluded from totals if GST waived in scenario basis)
       const isRehouse = scen.key === 'rehouse';
-      const ownerGST1C = isRehouse ? 0 : Math.round(b1.rent * ownerGSTRate);
-      const ownerGST2C = isRehouse ? 0 : Math.round(b2.rent * ownerGSTRate);
-      const markup1C = Math.round((b1.rent + ownerGST1C + b1.fee + gel1) * ch.markup);
-      const markup2C = Math.round((b2.rent + ownerGST2C + b2.fee + gel2) * ch.markup);
+      const ownerGST1C_forMarkup = isRehouse ? 0 : Math.round(b1.rent * ownerGSTRate);
+      const ownerGST2C_forMarkup = isRehouse ? 0 : Math.round(b2.rent * ownerGSTRate);
+      const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee + gel1) * ch.markup);
+      const markup2C = Math.round((b2.rent + ownerGST2C_forMarkup + b2.fee + gel2) * ch.markup);
 
-      // GST (exclude GEL & markup). Rehouse: waived
-      const gst1C = isRehouse ? 0 : Math.round((b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt) * GST_RATE);
-      const gst2C = isRehouse ? 0 : Math.round((b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt) * GST_RATE);
+      // Display-only Owner GST for New Booking (adjustable rate)
+      const ownerGST2DisplayC = Math.round(b2.rent * ownerGSTRate);
 
-      const total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + gel1 + markup1C + gst1C;
-      const total2 = b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + gst2C;
+      // Totals (exclude all GST from guest totals)
+      const total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + gel1 + markup1C;
+      const total2 = b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C;
       const diff   = total2 - total1;
 
       // ---- UI breakdowns ----
@@ -466,7 +464,6 @@
       el("obAdd").textContent    = nzd(b1.addAmt);
       el("gelAuto1").textContent = nzd(gel1);
       el("obMarkup").textContent = nzd(markup1C);
-      el("gst1").textContent     = isRehouse ? "Waived (Rehouse)" : nzd(gst1C);
       el("total1").textContent   = nzd(total1);
 
       el("nbRent").textContent   = nzd(b2.rent);
@@ -476,7 +473,7 @@
       el("nbAdd").textContent    = nzd(b2.addAmt);
       el("gelAuto2").textContent = nzd(gel2);
       el("nbMarkup").textContent = nzd(markup2C);
-      el("gst2").textContent     = isRehouse ? "Waived (Rehouse)" : nzd(gst2C);
+      el("ownerGST2").textContent = nzd(ownerGST2DisplayC);
       el("total2").textContent   = nzd(total2);
 
       el("tile1").textContent = nzd(total1);
@@ -489,13 +486,15 @@
       const header =
         "<b>Booking Breakdown</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
-        `<b>Scenario:</b> ${scen.label}${isRehouse ? " (GST Waived)" : ""}<br><br>`;
+        `<b>Scenario:</b> ${scen.label}${isRehouse ? " (GST waived for markup basis)" : ""}<br><br>`;
       const oldId = propOld;
       const newId = propNew;
       const propLine = (isRehouse || oldId || newId)
         ? `<b>Original Property ID:</b> ${oldId || "-"}<br><b>New Property ID:</b> ${newId || "-"}<br>` : "";
       const add1 = b1.addAmt > 0 ? `${b1.addInfo || "Additional charge"}: ${nzd(b1.addAmt)}<br>` : "";
       const add2 = b2.addAmt > 0 ? `${b2.addInfo || "Additional charge"}: ${nzd(b2.addAmt)}<br>` : "";
+
+      const ownerGSTRatePct = (ownerGSTRate * 100).toFixed(2);
 
       const html =
         header + propLine +
@@ -506,7 +505,6 @@
         `Booking Fee: ${nzd(b1.fee)}<br>` + add1 +
         `GEL: ${nzd(gel1)}<br>` +
         `Channel Markup: ${nzd(markup1C)}<br>` +
-        `GST: ${isRehouse ? "Waived" : nzd(gst1C)}<br>` +
         `Total: ${nzd(total1)}<br><br>` +
 
         "<b>New Booking</b><br>" +
@@ -516,7 +514,7 @@
         `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` + add2 +
         `GEL: ${nzd(gel2)}<br>` +
         `Channel Markup: ${nzd(markup2C)}<br>` +
-        `GST: ${isRehouse ? "Waived" : nzd(gst2C)}<br>` +
+        `Owner GST Total (${ownerGSTRatePct}% - display-only): ${nzd(ownerGST2DisplayC)}<br>` +
         `Total: ${nzd(total2)}<br><br>` +
 
         "<b>Outcome</b><br>" +
@@ -525,6 +523,9 @@
 
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
+
+      // Reflect fee2 to read-only field
+      el("fee2").value = (b2.fee / 100).toFixed(2);
     }
 
     // ---------- Tabs ----------
@@ -542,9 +543,9 @@
     // ---------- Calendars (Flatpickr) ----------
     function attachCalendars() {
       const opts = {
-        altInput: true,       // prettier display
-        altFormat: "d/m/Y",   // shown to the user
-        dateFormat: "Y-m-d",  // actual value used by the script
+        altInput: true,
+        altFormat: "d/m/Y",
+        dateFormat: "Y-m-d",
         allowInput: true,
         onChange: () => compute(true)
       };
@@ -571,7 +572,6 @@
 
       // Modal close
       el('dmClose').addEventListener('click', ()=> el('directModal').classList.add('hidden'));
-      // Escape key closes modal
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal').classList.add('hidden'); }});
 
       // Copy button
