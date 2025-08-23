@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.17) -->
-<!-- v0.17: Add multi-session Save/Load/Delete via localStorage (includes nightly rates) -->
+<!-- Bachcare Calculator — Base Working Version (v0.18) -->
+<!-- v0.18: Sessions moved to top + Reset; Amendment Fee direct-only (greyed/disabled for OTAs); ensure Channel Markup line in New Booking breakdown for OTAs -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.17)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.18)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -44,6 +44,26 @@
     <div class="tabpanes bg-white rounded-xl">
       <!-- Calculator Pane -->
       <div id="calcPane" class="p-4">
+        <!-- Sessions (moved to top) + Platform + Reset -->
+        <div class="mb-4 grid grid-cols-1 lg:grid-cols-3 gap-3 items-end">
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-700">Saved Sessions</label>
+            <select id="sessionPicker" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white">
+              <option value="">— none —</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-700">Name</label>
+            <input id="sessionName" type="text" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white" placeholder="e.g. Smith 23–28 Aug"/>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="sessionSave" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Save as New / Overwrite</button>
+            <button id="sessionLoad" class="px-3 py-2 rounded-xl bg-blue-600 text-white">Load</button>
+            <button id="sessionDelete" class="px-3 py-2 rounded-xl bg-red-600 text-white">Delete</button>
+            <button id="resetBtn" class="px-3 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">Reset</button>
+          </div>
+        </div>
+
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <label class="text-sm text-gray-700">
             Platform
@@ -68,7 +88,7 @@
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights">0</span></div>
           </section>
 
-        <section class="card">
+          <section class="card">
             <h2 class="text-xl font-semibold mb-3">New Dates</h2>
             <label class="block"><span class="text-sm font-medium text-gray-700">Start</span>
               <input type="text" id="newStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
@@ -182,7 +202,7 @@
               </label>
             </div>
 
-            <!-- Amendment: count -->
+            <!-- Amendment: count (direct-only) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
               <label class="block"><span class="text-sm font-medium text-gray-700">Amendment Count</span>
                 <input type="number" min="0" step="1" id="amendCount2" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
@@ -226,29 +246,6 @@
                   <div id="tile3" class="text-2xl font-semibold">—</div>
                   <div class="text-xs text-gray-500" id="tile3desc">Based on totals above</div>
                 </div>
-              </div>
-
-              <!-- Session manager -->
-              <div class="mt-4 card">
-                <h2 class="text-lg font-semibold mb-2">Sessions</h2>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-700">Saved Sessions</label>
-                    <select id="sessionPicker" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white">
-                      <option value="">— none —</option>
-                    </select>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-700">Name</label>
-                    <input id="sessionName" type="text" class="ml-2 flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-white" placeholder="e.g. Smith 23-28 Aug"/>
-                  </div>
-                  <div class="flex gap-2">
-                    <button id="sessionSave" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Save as New / Overwrite</button>
-                    <button id="sessionLoad" class="px-3 py-2 rounded-xl bg-blue-600 text-white">Load</button>
-                    <button id="sessionDelete" class="px-3 py-2 rounded-xl bg-red-600 text-white">Delete</button>
-                  </div>
-                </div>
-                <div class="mini mt-2">Sessions are stored locally in your browser. Nightly rates are included.</div>
               </div>
 
               <!-- Breakdown + Preview side by side -->
@@ -390,6 +387,106 @@
     let lastDirectModalKey = "";
     let lastDirect30Key = "";
 
+    // Sessions storage
+    const SESS_KEY = "bachcareCalc:sessions";
+    function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
+    function writeSessions(obj){ localStorage.setItem(SESS_KEY, JSON.stringify(obj||{})); refreshSessionPicker(); }
+    function refreshSessionPicker(){
+      const sel = el("sessionPicker"); if(!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">— none —</option>`;
+      const sessions = readSessions();
+      Object.keys(sessions).sort().forEach(name=>{
+        const opt = document.createElement("option");
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if(cur && sessions[cur]) sel.value = cur;
+    }
+    function collectNightlyRates(){
+      const arr = [];
+      document.querySelectorAll("#nightlyGrid .grid").forEach(row=>{
+        const dateTxt = row.querySelector(".text-sm")?.textContent?.trim()||"";
+        const val = row.querySelector(".nightRate")?.value||"";
+        arr.push({date: dateTxt, value: val});
+      });
+      return arr;
+    }
+    function applyNightlyRates(nightly){
+      if(!Array.isArray(nightly) || nightly.length===0) return;
+      nightly.forEach(n=>{
+        const rows = [...document.querySelectorAll("#nightlyGrid .grid")];
+        const row = rows.find(r => (r.querySelector(".text-sm")?.textContent||"").trim() === n.date);
+        if(row){
+          const inp = row.querySelector(".nightRate");
+          if(inp){ inp.value = n.value; }
+        }
+      });
+      sumNightly();
+    }
+    function collectFormData(){
+      const data = {};
+      document.querySelectorAll("#calcPane input, #calcPane select, #calcPane textarea").forEach(node=>{
+        if(!node.id) return;
+        if(node.type === "checkbox") data[node.id] = !!node.checked;
+        else data[node.id] = node.value;
+      });
+      data._nightly = collectNightlyRates();
+      return data;
+    }
+    function applyFormData(data){
+      if(!data || typeof data !== "object") return;
+      Object.keys(data).forEach(id=>{
+        if(id === "_nightly") return;
+        const node = el(id);
+        if(!node) return;
+        if(node.type === "checkbox") node.checked = !!data[id];
+        else node.value = data[id];
+      });
+      compute(true);
+      applyNightlyRates(data._nightly);
+      compute(false);
+    }
+    function saveSessionNamed(name){
+      if(!name){ alert("Please enter a session name."); return; }
+      const all = readSessions();
+      all[name] = collectFormData();
+      writeSessions(all);
+      alert(`Saved session: ${name}`);
+      el("sessionName").value = name;
+      el("sessionPicker").value = name;
+    }
+    function loadSessionNamed(name){
+      const all = readSessions();
+      if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
+      applyFormData(all[name]);
+      alert(`Loaded session: ${name}`);
+    }
+    function deleteSessionNamed(name){
+      const all = readSessions();
+      if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
+      if(!confirm(`Delete saved session "${name}"?`)) return;
+      delete all[name];
+      writeSessions(all);
+      refreshSessionPicker();
+      alert(`Deleted session: ${name}`);
+    }
+
+    function resetCalculator(){
+      // Clear only Calculator pane inputs (keep Settings)
+      document.querySelectorAll("#calcPane input, #calcPane textarea, #calcPane select").forEach(node=>{
+        if(node.id === "channel") return; // keep platform selection
+        if(node.type === "checkbox") node.checked = false;
+        else node.value = "";
+      });
+      // clear nightly grid + amend count
+      el("nightlyGrid").innerHTML = "";
+      el("rent2Sum").textContent = nzd(0);
+      if (el("amendCount2")) el("amendCount2").value = 0;
+      lastNewStart = ""; lastNewEnd = "";
+      compute(true);
+    }
+
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
       return { key, label, markup: parseFloat(mu) || 0 };
@@ -427,6 +524,15 @@
       setInputsDisabled("obOtaSummary", direct);
 
       el("guestEmailCard").classList.toggle("hidden-soft", !direct);
+
+      // Amendment: direct only
+      const amendInp = el("amendCount2");
+      const nbAmend = el("nbAmend");
+      if (amendInp) {
+        amendInp.disabled = !direct;
+        amendInp.classList.toggle("disabled-soft", !direct);
+      }
+      if (nbAmend) nbAmend.textContent = direct ? "$0.00" : "N/A";
     }
 
     // ---------- Nightly inputs ----------
@@ -519,93 +625,6 @@
       }
     }
 
-    // ---------- Session storage helpers ----------
-    const SESS_KEY = "bachcareCalc:sessions";
-    function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
-    function writeSessions(obj){ localStorage.setItem(SESS_KEY, JSON.stringify(obj||{})); refreshSessionPicker(); }
-    function refreshSessionPicker(){
-      const sel = el("sessionPicker"); if(!sel) return;
-      const cur = sel.value;
-      sel.innerHTML = `<option value="">— none —</option>`;
-      const sessions = readSessions();
-      Object.keys(sessions).sort().forEach(name=>{
-        const opt = document.createElement("option");
-        opt.value = name; opt.textContent = name;
-        sel.appendChild(opt);
-      });
-      if(cur && sessions[cur]) sel.value = cur;
-    }
-    function collectNightlyRates(){
-      const arr = [];
-      document.querySelectorAll("#nightlyGrid .grid").forEach(row=>{
-        const dateTxt = row.querySelector(".text-sm")?.textContent?.trim()||"";
-        const val = row.querySelector(".nightRate")?.value||"";
-        arr.push({date: dateTxt, value: val});
-      });
-      return arr;
-    }
-    function applyNightlyRates(nightly){
-      if(!Array.isArray(nightly) || nightly.length===0) return;
-      nightly.forEach(n=>{
-        const rows = [...document.querySelectorAll("#nightlyGrid .grid")];
-        const row = rows.find(r => (r.querySelector(".text-sm")?.textContent||"").trim() === n.date);
-        if(row){
-          const inp = row.querySelector(".nightRate");
-          if(inp){ inp.value = n.value; }
-        }
-      });
-      sumNightly();
-    }
-    function collectFormData(){
-      const data = {};
-      document.querySelectorAll("input, select, textarea").forEach(node=>{
-        if(!node.id) return;
-        if(node.type === "checkbox") data[node.id] = !!node.checked;
-        else data[node.id] = node.value;
-      });
-      data._nightly = collectNightlyRates();
-      return data;
-    }
-    function applyFormData(data){
-      if(!data || typeof data !== "object") return;
-      // set simple fields first
-      Object.keys(data).forEach(id=>{
-        if(id === "_nightly") return;
-        const node = el(id);
-        if(!node) return;
-        if(node.type === "checkbox") node.checked = !!data[id];
-        else node.value = data[id];
-      });
-      // rebuild nights from dates, then apply nightly values
-      compute(true);
-      applyNightlyRates(data._nightly);
-      compute(false);
-    }
-    function saveSessionNamed(name){
-      if(!name){ alert("Please enter a session name."); return; }
-      const all = readSessions();
-      all[name] = collectFormData();
-      writeSessions(all);
-      alert(`Saved session: ${name}`);
-      el("sessionName").value = name;
-      el("sessionPicker").value = name;
-    }
-    function loadSessionNamed(name){
-      const all = readSessions();
-      if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
-      applyFormData(all[name]);
-      alert(`Loaded session: ${name}`);
-    }
-    function deleteSessionNamed(name){
-      const all = readSessions();
-      if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
-      if(!confirm(`Delete saved session "${name}"?`)) return;
-      delete all[name];
-      writeSessions(all);
-      refreshSessionPicker();
-      alert(`Deleted session: ${name}`);
-    }
-
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
       // Dates & nights
@@ -672,7 +691,7 @@
         addAmt: toCents(el("addAmt2").value)
       };
 
-      // Markups
+      // Markups (GST influences markup base)
       const ownerGST1C_forMarkup = Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C_forMarkup = Math.round(b2.rent * ownerGSTRate);
       const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee + gel1) * ch.markup);
@@ -682,8 +701,8 @@
       const ownerGST1C = Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C = Math.round(b2.rent * ownerGSTRate);
 
-      // Amendment
-      const amendTotalC = Math.max(0, amendCount) * amendFeeEachC;
+      // Amendment (direct only)
+      const amendTotalC = direct ? (Math.max(0, amendCount) * amendFeeEachC) : 0;
 
       // Totals
       let total1;
@@ -719,7 +738,7 @@
       el("gelAuto2").textContent = nzd(gel2);
       el("nbMarkup").textContent = nzd(markup2C);
       el("ownerGST2").textContent = nzd(ownerGST2C);
-      el("nbAmend").textContent = amendCount > 0 ? nzd(amendTotalC) : "Waived";
+      el("nbAmend").textContent = direct ? (amendTotalC > 0 ? nzd(amendTotalC) : "Waived") : "N/A";
 
       el("total1").textContent   = nzd(total1);
       el("total2").textContent   = nzd(total2);
@@ -752,16 +771,18 @@
           origDatesLine +
           `Total Holiday Cost: ${nzd(total1)}<br><br>`;
 
+      // Always include Channel Markup line in New Booking (covers OTAs as requested)
       const newHtml =
         "<b>New Booking</b><br>" +
         newDatesLine +
         `Rent (sum nights): ${nzd(b2.rent)}<br>` +
         `GEL: ${nzd(gel2)}<br>` +
+        `Channel Markup: ${nzd(markup2C)}<br>` +
         (includeOwnerGST ? `Owner GST Total: ${nzd(ownerGST2C)}<br>` : "") +
         `Linen: ${nzd(b2.linen)}<br>` +
         `Cleaning: ${nzd(b2.clean)}<br>` +
         `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` +
-        (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) +
+        (direct ? (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) : `Amendment Fee: N/A<br>`) +
         `Total: ${nzd(total2)}<br><br>`;
 
       const outcomeHtml = diff >= 0
@@ -772,7 +793,7 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // ---- Direct-only pre-drafted email (unchanged from prior) ----
+      // ---- Direct-only pre-drafted email (unchanged) ----
       if (direct) {
         const rentOriginalEmailC = b1.rent + (includeOwnerGST ? ownerGST1C : 0);
         const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
@@ -797,7 +818,7 @@ This quote is valid for 24 hours. Please give us a call to confirm so we can pro
 • Rent: ${nzd(rentNewEmailC)}
 • Linen: ${nzd(b2.linen)}
 • Cleaning: ${nzd(b2.clean)}
-• Booking Fee: ${nzd(b2.fee)}${amendTotalC > 0 ? `\n• Amendment Fee: ${nzd(amendTotalC)}` : `\n• Amendment Fee: Waived`}
+• Booking Fee: ${nzd(b2.fee)}${direct ? (amendTotalC > 0 ? `\n• Amendment Fee: ${nzd(amendTotalC)}` : `\n• Amendment Fee: Waived`) : ``}
 • New Total: ${nzd(total2)}
 
 ${diff >= 0 ? `Amount to charge: ${nzd(diff)} once you confirm by phone.` : `Amount to refund: ${nzd(-diff)} once you confirm by phone.`}
@@ -813,6 +834,30 @@ Bachcare Team`;
       el("fee2").value = (b2.fee / 100).toFixed(2);
     }
 
+    // ---------- Calendars (Flatpickr) ----------
+    function attachCalendars() {
+      const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
+      if (window.flatpickr) {
+        flatpickr("#origStart", opts);
+        flatpickr("#origEnd",   opts);
+        flatpickr("#newStart",  opts);
+        flatpickr("#newEnd",    opts);
+      }
+    }
+
+    function syncMarkupsToDropdown(){
+      const air = parseFloat(el('mkAirbnb')?.value||'0')/100;
+      const bc  = parseFloat(el('mkBcom')?.value||'0')/100;
+      const vr  = parseFloat(el('mkVrbo')?.value||'0')/100;
+      const chSel = el('channel');
+      if(!chSel) return;
+      [...chSel.options].forEach(opt=>{
+        if(opt.value.startsWith('airbnb|')) opt.value = `airbnb|Airbnb|${air}`;
+        if(opt.value.startsWith('bcom|'))   opt.value = `bcom|Booking.com|${bc}`;
+        if(opt.value.startsWith('vrbo|'))   opt.value = `vrbo|VRBO|${vr}`;
+      });
+    }
+
     // ---------- Tabs ----------
     document.querySelectorAll('.tab').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -825,41 +870,38 @@ Bachcare Team`;
       });
     });
 
-    // ---------- Calendars (Flatpickr) ----------
-    function attachCalendars() {
-      const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
-      if (window.flatpickr) {
-        flatpickr("#origStart", opts);
-        flatpickr("#origEnd",   opts);
-        flatpickr("#newStart",  opts);
-        flatpickr("#newEnd",    opts);
-      }
-    }
-
     // ---------- Init ----------
     (function init() {
       attachCalendars();
       syncMarkupsToDropdown();
 
+      // Inputs that recompute
       ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","includeOwnerGST"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
 
+      // Dates trigger recompute WITH nightly grid rebuild
       ["origStart","origEnd","newStart","newEnd"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
 
+      // Modal closes
       el('dmClose')?.addEventListener('click', ()=> el('directModal').classList.add('hidden'));
       el('d30Close')?.addEventListener('click', ()=> el('direct30Modal').classList.add('hidden'));
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal')?.classList.add('hidden'); el('direct30Modal')?.classList.add('hidden'); }});
 
+      // Copy buttons
       el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
       el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
 
-      // Session manager events
+      // Sessions
       refreshSessionPicker();
       el("sessionSave").addEventListener("click", ()=> saveSessionNamed(el("sessionName").value.trim() || el("sessionPicker").value.trim()));
       el("sessionLoad").addEventListener("click", ()=> loadSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
       el("sessionDelete").addEventListener("click", ()=> deleteSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
 
+      // Reset
+      el("resetBtn").addEventListener("click", resetCalculator);
+
+      // First compute
       compute(true);
     })();
   </script>
