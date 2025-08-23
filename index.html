@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.14) -->
-<!-- v0.14: Remove GEL from Original Booking; email wording & 24h validity; fix "in Settings" spacing; add Direct 30-day policy popup -->
+<!-- Bachcare Calculator — Base Working Version (v0.15) -->
+<!-- v0.15: Space before “Settings”; Direct 30-day popup mentions extensions ok; Breakdown editor & preview side-by-side -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bachcare Calculator (Standalone) — (v0.14)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.15)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,11 +23,15 @@
     .tab{padding:.5rem 1rem;border:1px solid #e2e8f0;border-bottom:none;border-top-left-radius:.75rem;border-top-right-radius:.75rem;background:#f8fafc;margin-right:.5rem;cursor:pointer}
     .tab.active{background:#fff;font-weight:600}
     .tabpanes{border:1px solid #e2e8f0;border-radius:0 1rem 1rem 1rem;overflow:hidden}
-    /* Modal */
     .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
     .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
     .hidden-soft{display:none}
     .disabled-soft{opacity:.5;pointer-events:none}
+    /* Make preview area scroll independently when tall */
+    #previewCOD{max-height:20rem;overflow:auto}
+    @media (min-width:1024px){
+      #htmlCOD{height:20rem}
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -122,7 +126,7 @@
 
             <div class="border-t border-gray-100 my-2"></div>
 
-            <!-- Direct breakdown rows (no GEL row now) -->
+            <!-- Direct breakdown rows (no GEL row) -->
             <div id="obBreakdown" class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent</span><span id="obRent">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Linen</span><span id="obLinen">$0.00</span></div>
@@ -186,7 +190,7 @@
               <label class="block"><span class="text-sm font-medium text-gray-700">Amendment Count</span>
                 <input type="number" min="0" step="1" id="amendCount2" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
               </label>
-              <div class="mini flex items-end">Per-fee value is set in <b>Settings</b>.</div>
+              <div class="mini flex items-end">Per-fee value is set in&nbsp;<b>Settings</b>.</div>
             </div>
 
             <div class="border-t border-gray-100 my-2"></div>
@@ -227,16 +231,21 @@
                 </div>
               </div>
 
-              <div class="mt-4 grid grid-cols-1 gap-5">
+              <!-- Breakdown + Preview side by side -->
+              <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <section class="card">
-                  <h2 class="text-xl font-semibold mb-3">Finance Breakdown Itinerary Note</h2>
+                  <h2 class="text-lg font-semibold mb-2">Finance Breakdown Itinerary Note</h2>
                   <textarea id="htmlCOD" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-64" readonly></textarea>
                   <button id="copyCOD" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
-                  <div class="mini mt-4 mb-1">Preview</div>
+                </section>
+                <section class="card">
+                  <h2 class="text-lg font-semibold mb-2">Preview</h2>
                   <div id="previewCOD" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
                 </section>
+              </div>
 
-                <!-- Direct-only pre-drafted guest email -->
+              <!-- Direct-only pre-drafted guest email -->
+              <div class="mt-4 grid grid-cols-1">
                 <section id="guestEmailCard" class="card hidden-soft">
                   <h2 class="text-xl font-semibold mb-3">Guest Email (Direct bookings)</h2>
                   <textarea id="guestEmail" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm h-64" readonly></textarea>
@@ -321,7 +330,8 @@
             <h3 id="d30-title" class="text-xl font-semibold text-gray-900">Approval required</h3>
             <p id="d30-desc" class="mt-2 text-gray-700">
               For <b>Bachcare Direct</b>, <b>date changes</b> and <b>reductions of nights</b> can only be processed <b>outside of 30 days</b> of the booking start per policy.
-              This request appears to be <b>inside 30 days</b>. Please seek <b>Team Leader approval</b> before proceeding.
+              This request appears to be <b>inside 30 days</b>. Please seek <b>Team Leader approval</b> before proceeding.<br><br>
+              <i>If you are only <b>adding an extension</b> to the existing booking, you may disregard this message and click OK to continue.</i>
             </p>
           </div>
         </div>
@@ -335,16 +345,10 @@
   <script>
     // ---------- Helpers ----------
     const el = (id) => document.getElementById(id);
-    const toCents = (v) => {
-      const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(/[^0-9.-]/g, ""));
-      if (Number.isNaN(n)) return 0;
-      return Math.round(n * 100);
-    };
+    const toCents = (v) => { const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(/[^0-9.-]/g, "")); if (Number.isNaN(n)) return 0; return Math.round(n * 100); };
     const nzd = (c) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format((c || 0) / 100);
     const DAY = 86400000;
     function todayUTC(){ const n=new Date(); return new Date(Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())); }
-
-    // Accept dd/mm/yyyy or yyyy-mm-dd; strict, timezone-safe
     function getDateVal(id) {
       const v = (el(id)?.value || "").trim();
       if (!v) return null;
@@ -352,13 +356,13 @@
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d, m, y] = v.split("/").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
       const tryD = new Date(v); return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
     }
-    const dtIso = (d) => d.toISOString().slice(0, 10);
+    const dtIso = (d) => d.toISOString().slice(0,10);
     const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
     const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
 
     // ---------- Constants ----------
-    const GEL_PER_NIGHT_C = 1200;        // $12/night in cents
-    const BOOKING_FEE_CAP_C = 29900;     // $299 cap
+    const GEL_PER_NIGHT_C = 1200;
+    const BOOKING_FEE_CAP_C = 29900;
 
     let lastNewStart = "", lastNewEnd = "";
     let lastDirectModalKey = "";
@@ -380,7 +384,6 @@
         if(opt.value.startsWith('vrbo|'))   opt.value = `vrbo|VRBO|${vr}`;
       });
     }
-
     function setInputsDisabled(containerId, disabled){
       const cont = el(containerId);
       if(!cont) return;
@@ -395,13 +398,10 @@
       el("obBreakdown").classList.toggle("hidden-soft", !direct);
       setInputsDisabled("obDirectFields", !direct);
       setInputsDisabled("obBreakdown",   !direct);
-
       el("obOtaFields").classList.toggle("hidden-soft", direct);
       el("obOtaSummary").classList.toggle("hidden-soft", direct);
       setInputsDisabled("obOtaFields", direct);
       setInputsDisabled("obOtaSummary", direct);
-
-      // Toggle guest email visibility
       el("guestEmailCard").classList.toggle("hidden-soft", !direct);
     }
 
@@ -412,9 +412,7 @@
       grid.innerHTML = "";
       el("rent2Sum").textContent = nzd(0);
       if (!s || !e || e <= s) return;
-
-      let cur = new Date(s.getTime());
-      let idx = 0;
+      let cur = new Date(s.getTime()), idx = 0;
       while (cur < e) {
         const row = document.createElement("div");
         row.className = "grid grid-cols-7 gap-2 items-center";
@@ -432,14 +430,12 @@
         inp.addEventListener("change", () => { sumNightly(); compute(false); });
       });
     }
-
     function sumNightly() {
       let sum = 0;
       document.querySelectorAll("#nightlyGrid .nightRate").forEach((i) => sum += toCents(i.value));
       el("rent2Sum").textContent = nzd(sum);
       return sum;
     }
-
     function robustCopy(textareaId) {
       const ta = el(textareaId);
       ta.removeAttribute("readonly");
@@ -456,14 +452,11 @@
     function detectScenario(os, oe, ns, ne, propOld, propNew) {
       const hasBothProps = (propOld && propNew);
       if (hasBothProps && propOld !== propNew) return { key: 'rehouse', label: 'Rehouse', gstWaived: true };
-
       const origN = (os && oe) ? nightsBetween(os, oe) : 0;
       const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
       const overlap = overlaps(os, oe, ns, ne);
-
       if (overlap && newN > origN) return { key: 'extension', label: 'Extension', gstWaived: false };
       if (overlap && newN < origN) return { key: 'ron', label: 'Reduction of Nights', gstWaived: false };
-
       return { key: 'change', label: 'Change of Date', gstWaived: false };
     }
 
@@ -480,7 +473,6 @@
         setTimeout(()=> el('dmClose')?.focus(), 0);
       }
     }
-
     function maybeShowDirect30Policy(chKey, scenarioKey, os){
       if (chKey !== 'direct' || !os) return;
       if (!(scenarioKey === 'change' || scenarioKey === 'ron')) return;
@@ -498,7 +490,6 @@
 
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
-      // Dates & nights
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
       const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
       const origN = (os && oe) ? nightsBetween(os, oe) : 0;
@@ -506,35 +497,25 @@
       el("origNights").textContent = origN;
       el("newNights").textContent  = newN;
 
-      // Rebuild nightly grid ONLY if date strings changed
       if (rebuildDates) {
-        const nsStr = el("newStart").value || "";
-        const neStr = el("newEnd").value || "";
-        if (nsStr !== lastNewStart || neStr !== lastNewEnd) {
-          buildNightlyInputs();
-          lastNewStart = nsStr; lastNewEnd = neStr;
-        }
+        const nsStr = el("newStart").value || "", neStr = el("newEnd").value || "";
+        if (nsStr !== lastNewStart || neStr !== lastNewEnd) { buildNightlyInputs(); lastNewStart = nsStr; lastNewEnd = neStr; }
       }
 
       const ch = currentChannel();
       const direct = ch.key === 'direct';
       toggleOriginalUI(direct);
-
-      // Modal for Direct non-overlap
       maybeShowDirectModal(ch.key, os, oe, ns, ne);
 
-      // Settings & toggles
       const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
       const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071");
       const amendFeeEachC = toCents(el("amendFeeEach")?.value || "28.75");
       const amendCount = parseInt(el("amendCount2")?.value || "0", 10) || 0;
       const includeOwnerGST = !!el("includeOwnerGST")?.checked;
 
-      // Property IDs
       const propOld = (el("propIdOld")?.value || "").trim();
       const propNew = (el("propIdNew")?.value || "").trim();
 
-      // ORIGINAL booking (Direct fields) — GEL removed
       const b1 = {
         rent: toCents(el("rent1").value),
         linen: toCents(el("linen1").value),
@@ -543,57 +524,43 @@
         addInfo: (el("addInfo1").value || "").trim(),
         addAmt: toCents(el("addAmt1").value)
       };
-      const gel1 = 0; // per request: GEL already included in the user-entered Rent for Original Booking
+      const gel1 = 0; // GEL now part of entered Rent for Original Booking
 
-      // NEW booking (sum nightly)
       const rent2 = sumNightly();
       const gel2 = (ns && ne) ? nightsBetween(ns, ne) * GEL_PER_NIGHT_C : 0;
 
-      // Booking Fee auto-calc: (Rent + GEL) * rate, capped at $299
       const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
       const fee2 = Math.min(fee2RawC, BOOKING_FEE_CAP_C);
 
       const b2 = {
-        rent: rent2,
-        linen: toCents(el("linen2").value),
-        clean: toCents(el("clean2").value),
-        fee: fee2,
-        addInfo: (el("addInfo2").value || "").trim(),
-        addAmt: toCents(el("addAmt2").value)
+        rent: rent2, linen: toCents(el("linen2").value), clean: toCents(el("clean2").value),
+        fee: fee2, addInfo: (el("addInfo2").value || "").trim(), addAmt: toCents(el("addAmt2").value)
       };
 
-      // Channel markup (owner GST on rent only for markup basis)
       const ownerGST1C_forMarkup = Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C_forMarkup = Math.round(b2.rent * ownerGSTRate);
       const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee + gel1) * ch.markup);
       const markup2C = Math.round((b2.rent + ownerGST2C_forMarkup + b2.fee + gel2) * ch.markup);
 
-      // Owner GST (display lines + optional include for new)
       const ownerGST1C = Math.round(b1.rent * ownerGSTRate);
       const ownerGST2C = Math.round(b2.rent * ownerGSTRate);
 
-      // Amendment total (applies to new)
       const amendTotalC = Math.max(0, amendCount) * amendFeeEachC;
 
-      // Totals
       let total1;
       if (direct) {
         total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C; // GEL excluded
       } else {
-        const otaC = toCents(el("otaTotal1")?.value || 0);
-        total1 = otaC;
+        const otaC = toCents(el("otaTotal1")?.value || 0); total1 = otaC;
       }
       const total2Base = b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + amendTotalC;
       const total2 = includeOwnerGST ? (total2Base + ownerGST2C) : total2Base;
       const diff   = total2 - total1;
 
-      // ---- Scenario ----
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
-      // Direct 30-day policy popup for Change/RON
       maybeShowDirect30Policy(ch.key, scen.key, os);
 
-      // ---- UI breakdowns ----
       el("obRent").textContent   = nzd(b1.rent);
       el("obLinen").textContent  = nzd(b1.linen);
       el("obClean").textContent  = nzd(b1.clean);
@@ -612,15 +579,14 @@
       el("ownerGST2").textContent = nzd(ownerGST2C);
       el("nbAmend").textContent = amendCount > 0 ? nzd(amendTotalC) : "Waived";
 
-      el("total1").textContent   = nzd(total1);
-      el("total2").textContent   = nzd(total2);
+      el("total1").textContent = nzd(total1);
+      el("total2").textContent = nzd(total2);
       el("tile1").textContent = nzd(total1);
       el("tile2").textContent = nzd(total2);
       el("tile3").textContent = nzd(Math.abs(diff));
       el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
       el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
 
-      // ---- Finance Breakdown (HTML + Preview) ----
       const header =
         "<b>Booking Breakdown</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
@@ -629,7 +595,6 @@
       const originalHtml = (ch.key === 'direct')
         ? "<b>Original Booking</b><br>" +
           `Rent: ${nzd(b1.rent)}<br>` +
-          // no GST line for original per policy
           `Linen: ${nzd(b1.linen)}<br>` +
           `Cleaning: ${nzd(b1.clean)}<br>` +
           `Booking Fee: ${nzd(b1.fee)}<br>` +
@@ -656,13 +621,10 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // ---- Direct-only pre-drafted email (reworded; 24h validity) ----
       if (direct) {
-        // For email: Original Rent already includes GEL; add Owner GST if included
         const rentOriginalEmailC = b1.rent + (includeOwnerGST ? ownerGST1C : 0);
         const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? ownerGST2C : 0);
-
-        const phrase = scen.label.toLowerCase(); // "change of date", "reduction of nights", etc.
+        const phrase = scen.label.toLowerCase();
 
         const email =
 `Subject: Updated Booking Quote – ${ch.label}
@@ -686,9 +648,7 @@ This quote is valid for 24 hours. Please give us a call to confirm so we can pro
 • Booking Fee: ${nzd(b2.fee)}${amendTotalC > 0 ? `\n• Amendment Fee: ${nzd(amendTotalC)}` : `\n• Amendment Fee: Waived`}
 • New Total: ${nzd(total2)}
 
-${diff >= 0
-  ? `Amount to charge: ${nzd(diff)} once you confirm by phone.`
-  : `Amount to refund: ${nzd(-diff)} once you confirm by phone.`}
+${diff >= 0 ? `Amount to charge: ${nzd(diff)} once you confirm by phone.` : `Amount to refund: ${nzd(-diff)} once you confirm by phone.`}
 
 Kind regards,
 Bachcare Team`;
@@ -697,7 +657,6 @@ Bachcare Team`;
         el("guestEmail").value = "";
       }
 
-      // Reflect fee2 read-only
       el("fee2").value = (b2.fee / 100).toFixed(2);
     }
 
@@ -713,7 +672,7 @@ Bachcare Team`;
       });
     });
 
-    // ---------- Calendars (Flatpickr) ----------
+    // ---------- Calendars ----------
     function attachCalendars() {
       const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
       if (window.flatpickr) {
@@ -729,24 +688,19 @@ Bachcare Team`;
       attachCalendars();
       syncMarkupsToDropdown();
 
-      // Inputs that recompute WITHOUT rebuilding nightly grid
       ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","includeOwnerGST"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
 
-      // Dates trigger recompute WITH nightly grid rebuild
       ["origStart","origEnd","newStart","newEnd"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
 
-      // Modal close
       el('dmClose')?.addEventListener('click', ()=> el('directModal').classList.add('hidden'));
       el('d30Close')?.addEventListener('click', ()=> el('direct30Modal').classList.add('hidden'));
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal')?.classList.add('hidden'); el('direct30Modal')?.classList.add('hidden'); }});
 
-      // Copy buttons
       el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
       el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
 
-      // First run
       compute(true);
     })();
   </script>
