@@ -21,6 +21,9 @@
     .tab{padding:.5rem 1rem;border:1px solid #e2e8f0;border-bottom:none;border-top-left-radius:.75rem;border-top-right-radius:.75rem;background:#f8fafc;margin-right:.5rem;cursor:pointer}
     .tab.active{background:#fff;font-weight:600}
     .tabpanes{border:1px solid #e2e8f0;border-radius:0 1rem 1rem 1rem;overflow:hidden}
+    /* Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
   </style>
 </head>
 <body class="bg-gray-50">
@@ -38,8 +41,8 @@
       <div id="calcPane" class="p-4">
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <select id="channel" class="px-3 py-2 rounded-xl border border-gray-300 bg-white">
-            <option value="direct|Bachcare Direct|0">Bachcare Direct</option>
-            <option value="bcom|B.com|0.239" selected>B.com</option>
+            <option value="direct|Bachcare Direct|0" selected>Bachcare Direct</option>
+            <option value="bcom|B.com|0.239">B.com</option>
             <option value="vrbo|VRBO|0.202">VRBO</option>
             <option value="airbnb|Airbnb|0.255">Airbnb</option>
           </select>
@@ -221,6 +224,32 @@
     </div>
   </div>
 
+  <!-- Modal for Bachcare Direct non-overlap -->
+  <div id="directModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-red-50 border border-red-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="dm-title" class="text-xl font-semibold text-gray-900">Calculator not needed</h3>
+            <p id="dm-desc" class="mt-2 text-gray-700">
+              This is a <b>Bachcare Direct</b> booking and the <b>new dates do not overlap</b> the original dates.
+              Please create a <b>new offline booking</b> — that will give the correct total automatically.
+            </p>
+            <p class="mt-2 text-sm text-gray-500">You can still use the calculator if you need a manual comparison, but it’s not required for this scenario.</p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="dmClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ---------- Helpers ----------
     const el = (id) => document.getElementById(id);
@@ -249,16 +278,19 @@
     const GST_RATE = 0.15;
     const BOOKING_FEE_CAP_C = 29900;     // $299 cap
     let lastNewStart = "", lastNewEnd = ""; // protect nightly inputs while typing
+    let lastDirectModalKey = "";           // avoid repeat popups for same date combo
 
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
       return { key, label, markup: parseFloat(mu) || 0 };
     }
     function syncMarkupsToDropdown(){
-      const air = parseFloat(el('mkAirbnb').value||'0')/100;
-      const bc  = parseFloat(el('mkBcom').value||'0')/100;
-      const vr  = parseFloat(el('mkVrbo').value||'0')/100;
-      [...el('channel').options].forEach(opt=>{
+      const air = parseFloat(el('mkAirbnb')?.value||'0')/100;
+      const bc  = parseFloat(el('mkBcom')?.value||'0')/100;
+      const vr  = parseFloat(el('mkVrbo')?.value||'0')/100;
+      const chSel = el('channel');
+      if(!chSel) return;
+      [...chSel.options].forEach(opt=>{
         if(opt.value.startsWith('airbnb|')) opt.value = `airbnb|Airbnb|${air}`;
         if(opt.value.startsWith('bcom|'))   opt.value = `bcom|B.com|${bc}`;
         if(opt.value.startsWith('vrbo|'))   opt.value = `vrbo|VRBO|${vr}`;
@@ -327,6 +359,22 @@
       return { key: 'change', label: 'Change of Date', gstWaived: false };
     }
 
+    // ---------- Bachcare Direct non-overlap popup ----------
+    function maybeShowDirectModal(chKey, os, oe, ns, ne) {
+      const modal = el('directModal');
+      if (!modal) return;
+      // Only trigger when all dates are valid
+      if (!os || !oe || !ns || !ne) return;
+      const noOverlap = !(overlaps(os, oe, ns, ne));
+      const key = `${chKey}|${os.toISOString()}|${oe.toISOString()}|${ns.toISOString()}|${ne.toISOString()}`;
+      if (chKey === 'direct' && noOverlap && lastDirectModalKey !== key) {
+        lastDirectModalKey = key;
+        modal.classList.remove('hidden');
+        // focus the OK button for accessibility
+        setTimeout(()=> el('dmClose')?.focus(), 0);
+      }
+    }
+
     // ---------- Main compute ----------
     function compute(rebuildDates = true) {
       // Dates & nights
@@ -353,6 +401,9 @@
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
 
+      // Show advisory modal for Bachcare Direct non-overlap
+      maybeShowDirectModal(ch.key, os, oe, ns, ne);
+
       const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0");
 
       // ORIGINAL booking
@@ -368,7 +419,7 @@
 
       // NEW booking (sum nightly)
       const rent2 = sumNightly();
-      let fee2 = 4000; // default $40; replace with your rule if needed
+      let fee2 = 4000; // default $40; apply your precise rule if needed
       fee2 = Math.min(fee2, BOOKING_FEE_CAP_C);
       const b2 = {
         rent: rent2,
@@ -506,6 +557,11 @@
       // Dates trigger recompute WITH nightly grid rebuild
       ["origStart","origEnd","newStart","newEnd"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
+
+      // Modal close
+      el('dmClose').addEventListener('click', ()=> el('directModal').classList.add('hidden'));
+      // Escape key closes modal
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ el('directModal').classList.add('hidden'); }});
 
       // Copy button
       el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
