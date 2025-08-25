@@ -1,6 +1,13 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.27) -->
-<!-- v0.27: Reinstated platform pop-ups; "GST on Rent (auto)" label; New Property ID auto-fills from Original (with guidance); preserved Direct extension-only nights; OTA amendment disabled; default New Created On = today; kept Direct non-overlap modal. -->
+<!-- Bachcare Calculator — Base Working Version (v0.27)
+ v0.27 changes:
+ • Fix tabs so they work on every click (remove { once:true } and stray token)
+ • Treat adjacent date ranges as NOT overlapping (strict < comparisons)
+ • Settings → Channel Markups now update the Platform dropdown live
+ • Auto-fill New Property ID from Original (editable afterwards; clarified placeholder)
+ • Direct + no date overlap: guidance alert to create a new offline booking (shown once per session)
+ • New Booking mid-panel label updated to “GST on Rent (auto)”
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -28,10 +35,6 @@
     .required:after{content:" *"; color:#dc2626; font-weight:600}
     #previewCOD{max-height:20rem;overflow:auto}
     @media (min-width:1024px){ #htmlCOD{height:20rem} }
-
-    /* Modal */
-    .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
-    .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
   </style>
 </head>
 <body class="bg-gray-50">
@@ -120,7 +123,7 @@
 
             <div id="obBreakdown" class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent</span><span id="obRent">$0.00</span></div>
-              <!-- No GST row for original booking -->
+              <!-- GST row removed for original booking by request -->
               <div class="row"><span class="text-gray-600">Linen</span><span id="obLinen">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Cleaning</span><span id="obClean">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Booking Fee</span><span id="obFee">$0.00</span></div>
@@ -153,9 +156,8 @@
             </div>
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="newNights">0</span></div>
 
-            <label class="block mt-3">
-              <span class="text-sm font-medium text-gray-700">New Property ID <span class="text-gray-500">(Adjust if new property ID or leave as is)</span></span>
-              <input type="text" id="propIdNew" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 532112">
+            <label class="block mt-3"><span class="text-sm font-medium text-gray-700">New Property ID</span>
+              <input type="text" id="propIdNew" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="Auto-filled from Original (Adjust if new property ID or leave as is)">
             </label>
 
             <!-- Daily Modifier Rates -->
@@ -197,13 +199,15 @@
               <label class="block"><span class="text-sm font-medium text-gray-700">Amendment Count</span>
                 <input type="number" min="0" step="1" id="amendCount2" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
               </label>
-              <div class="mini text-gray-600">Per-fee value is set in <b>Settings</b> <span class="text-gray-400">(Direct only)</span>.</div>
+              <div class="mini text-gray-600">
+                Per-fee value is set in <b>Settings</b> <span class="text-gray-400">(Direct only)</span>.
+              </div>
             </div>
 
             <div class="border-t border-gray-100 my-2"></div>
             <div class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent (sum nights)</span><span id="nbRent">$0.00</span></div>
-              <div class="row"><span class="text-gray-600">GST on Rent</span><span id="ownerGST2">$0.00</span></div>
+              <div class="row"><span class="text-gray-600">GST on Rent (auto)</span><span id="ownerGST2">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Linen</span><span id="nbLinen">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Cleaning</span><span id="nbClean">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Booking Fee (auto)</span><span id="nbFee">$0.00</span></div>
@@ -232,12 +236,12 @@
               <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <section class="card">
                   <h2 class="text-lg font-semibold mb-2">Finance Breakdown Itinerary Note</h2>
-                  <textarea id="htmlCOD" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-64" readonly></textarea>
+                  <textarea id="htmlCOD" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs h-64" readonly aria-live="polite"></textarea>
                   <button id="copyCOD" class="mt-2 px-3 py-2 rounded-xl bg-emerald-600 text-white">Copy Breakdown</button>
                 </section>
                 <section class="card">
                   <h2 class="text-lg font-semibold mb-2">Preview</h2>
-                  <div id="previewCOD" class="p-3 rounded-xl border border-gray-200 bg-white text-sm"></div>
+                  <div id="previewCOD" class="p-3 rounded-xl border border-gray-200 bg-white text-sm" aria-live="polite"></div>
                 </section>
               </div>
 
@@ -259,9 +263,9 @@
       <!-- Settings -->
       <div id="settingsPane" class="p-4 hidden">
         <section class="card mb-4">
-          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">GST Rate (on new rent)</span></div>
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">GST Rate (on rent)</span></div>
           <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Applied automatically to new booking rent.</div>
+          <div class="mini">Applies to new booking rent (auto).</div>
         </section>
         <section class="card mb-4">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Booking Fee Rate</span></div>
@@ -311,32 +315,6 @@
     </div>
   </div>
 
-  <!-- Modal for Bachcare Direct non-overlap -->
-  <div id="directModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc">
-    <div class="modal">
-      <div class="p-6">
-        <div class="flex items-start gap-3">
-          <div class="shrink-0 rounded-full bg-red-50 border border-red-200 p-2 mt-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
-            </svg>
-          </div>
-          <div>
-            <h3 id="dm-title" class="text-xl font-semibold text-gray-900">Calculator not needed</h3>
-            <p id="dm-desc" class="mt-2 text-gray-700">
-              This is a <b>Bachcare Direct</b> booking and the <b>new dates do not overlap</b> the original dates.
-              Please create a <b>new offline booking</b> — that will give the correct total automatically.
-            </p>
-            <p class="mt-2 text-sm text-gray-500">You can still use the calculator if you need a manual comparison, but it’s not required for this scenario.</p>
-          </div>
-        </div>
-        <div class="mt-6 flex justify-end gap-2">
-          <button id="dmClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
     // ---------- Helpers ----------
     const el = (id) => document.getElementById(id);
@@ -348,7 +326,6 @@
     const BOOKING_FEE_CAP_C = 29900;
     const BOOKING_FEE_MIN_C = 4000;
 
-    // date utils
     function getDateVal(id) {
       const v = (el(id)?.value || "").trim();
       if (!v) return null;
@@ -359,13 +336,11 @@
     const dtIso = (d) => d?.toISOString().slice(0, 10);
     function dtNZ(d){ if(!(d instanceof Date) || isNaN(d)) return ""; const dd=String(d.getUTCDate()).padStart(2,'0'); const mm=String(d.getUTCMonth()+1).padStart(2,'0'); const yy=d.getUTCFullYear(); return `${dd}/${mm}/${yy}`; }
     const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
-    const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
+    // Strict overlap: adjacent [start,end) ranges are NOT overlapping
+    const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 < b2) && (b1 < a2);
 
-    // state
     let lastNewStart = "", lastNewEnd = "";
-    let propIdNewTouched = false;
-    const shownPopups = new Set(); // throttle duplicate popups
-    let lastDirectModalKey = "";
+    let noOverlapAlerted = false; // prevent repeated alerts
 
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
@@ -384,7 +359,7 @@
       return { key: 'change', label: 'Change of Date' };
     }
 
-    // Nightly inputs (only added nights for Direct Extension)
+    // Nightly inputs
     function buildNightlyInputs() {
       const s = getDateVal("newStart"), e = getDateVal("newEnd");
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
@@ -447,7 +422,6 @@
       alert("Copied to clipboard.");
     }
 
-    // Extra night helpers
     function listExtraNightDates(os, oe, ns, ne){
       const out = [];
       if(!ns || !ne) return out;
@@ -467,92 +441,7 @@
       return sum;
     }
 
-    // ---------- Policy & workflow pop-ups ----------
-    function maybeShowDirectModal(chKey, os, oe, ns, ne) {
-      const modal = el('directModal');
-      if (!modal) return;
-      if (!os || !oe || !ns || !ne) return;
-      const noOverlap = !(overlaps(os, oe, ns, ne));
-      const key = `directModal|${chKey}|${os?.toISOString()}|${oe?.toISOString()}|${ns?.toISOString()}|${ne?.toISOString()}`;
-      if (chKey === 'direct' && noOverlap && lastDirectModalKey !== key) {
-        lastDirectModalKey = key;
-        modal.classList.remove('hidden');
-        setTimeout(()=> el('dmClose')?.focus(), 0);
-      }
-    }
-
-    function nzTodayUTC(){
-      const now = new Date();
-      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    }
-
-    function daysUntil(date){
-      if(!(date instanceof Date)) return null;
-      const t = nzTodayUTC();
-      return Math.round((date - t)/DAY);
-    }
-
-    function policyPopups(ch, scen, os, oe){
-      if(!os || !oe) return;
-
-      const keyBase = `${ch.key}|${scen.key}|${os?.toISOString()}|${oe?.toISOString()}`;
-      const today = nzTodayUTC();
-      const withinStay = (today >= os && today < oe);
-      const dToStart = daysUntil(os);
-
-      // DIRECT: change/reduction inside 30 days -> approval (extensions exempt)
-      if (ch.key === 'direct' && (scen.key === 'change' || scen.key === 'ron')) {
-        if (dToStart !== null && dToStart < 30) {
-          const k = `direct30|${keyBase}`;
-          if(!shownPopups.has(k)){
-            shownPopups.add(k);
-            alert("Direct booking: This change is within 30 days of check-in.\nPlease seek Team Leader approval before proceeding.\nIf this is ONLY an extension, you may disregard and continue.");
-          }
-        }
-      }
-
-      // OTA: Extension allowed anytime; if during active stay (Airbnb/B.com/VRBO) -> phone payment
-      if ((ch.key === 'airbnb' || ch.key === 'bcom' || ch.key === 'vrbo') && scen.key === 'extension' && withinStay) {
-        const k = `otaExtPhone|${keyBase}`;
-        if(!shownPopups.has(k)){
-          shownPopups.add(k);
-          alert("Extension during active stay:\nProcess payment over the phone (portal won't allow last-minute change).\nCreate a workflow to Finance to explain partial phone payment vs portal.");
-        }
-      }
-
-      // OTA: Airbnb & Booking.com date-change or RON must be requested via portal
-      if ((ch.key === 'airbnb' || ch.key === 'bcom') && (scen.key === 'change' || scen.key === 'ron')) {
-        const k = `otaPortal|${keyBase}`;
-        if(!shownPopups.has(k)){
-          shownPopups.add(k);
-          alert("For Airbnb/Booking.com date changes or reductions:\nAsk the guest to request the change in the portal. Accept it in our end to let their system calculate the correct amount.\nThen mirror the change in Enterprise and paste the portal breakdown into itinerary notes.\nWorkflow to Finance to adjust Enterprise breakdown.");
-        }
-      }
-
-      // Booking.com: change/RON within 7 days -> TL approval
-      if (ch.key === 'bcom' && (scen.key === 'change' || scen.key === 'ron')) {
-        if (dToStart !== null && dToStart < 7) {
-          const k = `bcom7|${keyBase}`;
-          if(!shownPopups.has(k)){
-            shownPopups.add(k);
-            alert("Booking.com: This change is within 7 days of check-in (outside free cancellation).\nPlease seek Team Leader approval before proceeding.");
-          }
-        }
-      }
-
-      // Airbnb: change/RON within 30 days -> TL approval
-      if (ch.key === 'airbnb' && (scen.key === 'change' || scen.key === 'ron')) {
-        if (dToStart !== null && dToStart < 30) {
-          const k = `airbnb30|${keyBase}`;
-          if(!shownPopups.has(k)){
-            shownPopups.add(k);
-            alert("Airbnb: This change is within 30 days of check-in (outside free cancellation).\nPlease seek Team Leader approval before proceeding.");
-          }
-        }
-      }
-    }
-
-    // ---------- Main compute ----------
+    // ---------- Compute ----------
     function compute(rebuildDates = true) {
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
       const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
@@ -573,22 +462,24 @@
       const gstRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
       const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071");
       const amendFeeEachC = toCents(el("amendFeeEach")?.value || "28.75");
-      const amendCountInput = el("amendCount2");
-      const amendCount = parseInt(amendCountInput?.value || "0", 10) || 0;
-
-      // Amendment input disabled for OTA
-      if (amendCountInput) {
-        const disableAmend = !direct;
-        amendCountInput.disabled = disableAmend;
-        amendCountInput.classList.toggle('disabled-soft', disableAmend);
-      }
+      const amendCount = parseInt(el("amendCount2")?.value || "0", 10) || 0;
 
       const propOld = (el("propIdOld")?.value || "").trim();
       const propNew = (el("propIdNew")?.value || "").trim();
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
 
-      // Grey out Linen/Cleaning for direct extension
+      // Guidance alert for Direct + no overlap
+      if (direct && os && oe && ns && ne) {
+        const hasOverlap = overlaps(os, oe, ns, ne);
+        if (!hasOverlap && !noOverlapAlerted) {
+          noOverlapAlerted = true;
+          alert('Heads up: For Bachcare Direct when new dates do not overlap the original dates,\n' +
+                'you generally don’t need the calculator. Please create a new offline booking\n' +
+                'to get the correct total.');
+        }
+      }
+
       const isDirectExt = direct && scen.key === 'extension';
       ["linen2","clean2"].forEach(id=>{
         const node = el(id);
@@ -622,13 +513,13 @@
         addAmt: toCents(el("addAmt2").value)
       };
 
-      // Markups
-      const ownerGST2C = Math.round(b2.rent * gstRate);
+      // Markups (direct markup is 0; left for completeness)
       const markup1C = Math.round((b1.rent + b1.fee) * ch.markup);
+      const ownerGST2C = Math.round(b2.rent * gstRate);
       const markup2C = Math.round((b2.rent + ownerGST2C + b2.fee + gel2) * ch.markup);
 
       // Amendments
-      const amendTotalC = direct ? (Math.max(0, amendCount) * toCents(el("amendFeeEach")?.value || "28.75")) : 0;
+      const amendTotalC = direct ? (Math.max(0, amendCount) * amendFeeEachC) : 0;
 
       // Totals
       let total1 = direct
@@ -642,7 +533,6 @@
         const extraGelC  = extraDates.length * GEL_PER_NIGHT_C;
         const extraGSTC  = Math.round(extraRentC * gstRate);
 
-        // Booking fee diff logic (add-on vs min/max caps)
         const feeBaseCombinedC = b1.rent + extraRentC + extraGelC;
         const feeCombinedRawC  = Math.round(feeBaseCombinedC * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
         feeNewTotalC = Math.max(BOOKING_FEE_MIN_C, Math.min(feeCombinedRawC, BOOKING_FEE_CAP_C));
@@ -658,7 +548,7 @@
 
       const diff = total2 - total1;
 
-      // UI numbers
+      // UI
       el("obRent").textContent   = nzd(b1.rent);
       el("obLinen").textContent  = nzd(b1.linen);
       el("obClean").textContent  = nzd(b1.clean);
@@ -685,12 +575,334 @@
       el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
       el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
 
-      // UI toggles
       toggleOriginalUI(direct);
 
-      // Show platform policy pop-ups + direct non-overlap modal
-      policyPopups(ch, scen, os, oe);
-      maybeShowDirectModal(ch.key, os, oe, ns, ne);
-
       // Breakdown (NZ date format; GST on Rent shows "(auto)")
-      const orig
+      const origDatesLine = (os && oe) ? `Check-in: ${dtNZ(os)} &nbsp;|&nbsp; Check-out: ${dtNZ(oe)} &nbsp;|&nbsp; Nights: ${nightsBetween(os,oe)}<br>` : "";
+      const newDatesLine  = (ns && ne) ? `Check-in: ${dtNZ(ns)} &nbsp;|&nbsp; Check-out: ${dtNZ(ne)} &nbsp;|&nbsp; Nights: ${nightsBetween(ns,ne)}<br>` : "";
+      const header =
+        "<b>Booking Breakdown</b><br>" +
+        `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
+        `<b>Scenario:</b> ${scen.label}<br><br>`;
+
+      const originalHtml = (direct)
+        ? "<b>Original Booking</b><br>" +
+          origDatesLine +
+          `Rent: ${nzd(b1.rent)}<br>` +
+          `Linen: ${nzd(b1.linen)}<br>` +
+          `Cleaning: ${nzd(b1.clean)}<br>` +
+          `Booking Fee: ${nzd(b1.fee)}<br>` +
+          `Total: ${nzd(total1)}<br><br>`
+        : "<b>Original Booking</b><br>" + origDatesLine + `Total Holiday Cost: ${nzd(total1)}<br><br>`;
+
+      let newHtml = "";
+      if (isDirectExt && extExtra){
+        newHtml =
+          "<b>New Booking (Extension)</b><br>" +
+          newDatesLine +
+          `Added Rent (extra night[s]): ${nzd(extExtra.extraRentC)}<br>` +
+          `Added GEL: ${nzd(extExtra.extraGelC)}<br>` +
+          `GST on Added Rent (auto): ${nzd(extExtra.extraGSTC)}<br>` +
+          `Booking Fee (difference): ${nzd(extExtra.feeDiffC)} (updated total fee: ${nzd(extExtra.feeNewTotalC)})<br>` +
+          (extExtra.chargedAmendC===0 ? `Amendment Fee: Waived (covered by booking fee difference)<br>` : `Amendment Fee: ${nzd(extExtra.chargedAmendC)}<br>`) +
+          `Total: ${nzd(total2)}<br><br>`;
+      } else {
+        newHtml =
+          "<b>New Booking</b><br>" +
+          newDatesLine +
+          `Rent (sum nights): ${nzd(b2.rent)}<br>` +
+          `GEL: ${nzd(gel2)}<br>` +
+          `GST on Rent (auto): ${nzd(ownerGST2C)}<br>` +
+          `Channel Markup: ${nzd(markup2C)}<br>` +
+          `Linen: ${nzd(b2.linen)}<br>` +
+          `Cleaning: ${nzd(b2.clean)}<br>` +
+          `Booking Fee (auto, min $40 cap $299): ${nzd(b2.fee)}<br>` +
+          (direct ? (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) : `Amendment Fee: N/A<br>`) +
+          `Total: ${nzd(total2)}<br><br>`;
+      }
+
+      const outcomeHtml = diff >= 0
+        ? `Amount to charge guest: ${nzd(diff)}<br>`
+        : `Amount to refund guest: ${nzd(-diff)}<br>`;
+
+      const html = header + originalHtml + newHtml + "<b>Outcome</b><br>" + outcomeHtml;
+      el("htmlCOD").value = html;
+      el("previewCOD").innerHTML = html;
+
+      // Guest email (Direct only)
+      if (direct) {
+        const today = new Date(); const todayUTC = new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()));
+        const daysToStart = (os && oe) ? Math.round((os - todayUTC)/DAY) : 0;
+        const extTotalC = Math.max(0, total2 - total1); // extension cost increment (for wording)
+        const dueNowC = (daysToStart >= 30) ? Math.round(extTotalC * 0.30) : extTotalC;
+        const remainingC = Math.max(0, extTotalC - dueNowC);
+        const dueDate = os ? new Date(os.getTime() - 30*DAY) : null;
+
+        if (isDirectExt && extExtra) {
+          const extraDatesHuman = extExtra.extraDates && extExtra.extraDates.length
+            ? extExtra.extraDates.map(s=> dtNZ(new Date(s))).join(", ")
+            : "-";
+          const originalRentBundledC = b1.rent; // already incl. GST & GEL per request
+          const extraRentBundledC = extExtra.extraRentC + extExtra.extraGSTC + extExtra.extraGelC;
+
+          el("guestEmail").value =
+`Subject: Your updated booking quote
+
+Kia ora,
+
+Thanks for your extension request. Please find a clear summary below.
+
+— Original Booking —
+• Dates: ${dtNZ(os)} | ${dtNZ(oe)}
+• Rent: ${nzd(originalRentBundledC)}
+• Linen: ${nzd(b1.linen)}
+• Cleaning: ${nzd(b1.clean)}
+${b1.addAmt>0 ? `• Additional charge: ${nzd(b1.addAmt)}\n` : ""}• Booking fee: ${nzd(b1.fee)}
+• Total: ${nzd(total1)}
+
+— Updated Booking (Extension) —
+• Extra night(s) added: ${extraDatesHuman}
+• Extra nights rent: ${nzd(extraRentBundledC)}
+• Booking fee: ${nzd(extExtra.feeDiffC)}
+• Amendment fee: ${extExtra.chargedAmendC===0 ? "Waived" : nzd(extExtra.chargedAmendC)}
+• New total: ${nzd(total2)}
+
+Amount due now: ${nzd(dueNowC)}
+${remainingC>0 ? `Remaining due on ${dtNZ(dueDate)}: ${nzd(remainingC)}\n` : ``}
+This quote is valid for 24 hours. To proceed, please call us and we’ll securely process the ${extTotalC>0?'payment':'refund'} over the phone. We’ll confirm everything by email once complete.
+
+Ngā mihi,
+Bachcare Team`;
+        } else {
+          // Non-extension direct email (unchanged structure, labels consistent)
+          const newRentBundledC = b2.rent + ownerGST2C + gel2;
+          const originalRentBundledC = b1.rent;
+          const fullDiff = Math.max(0, total2 - total1);
+          const dueNowC2 = (daysToStart >= 30) ? Math.round(fullDiff * 0.30) : fullDiff;
+          const remainingC2 = Math.max(0, fullDiff - dueNowC2);
+          const dueDate2 = os ? new Date(os.getTime() - 30*DAY) : null;
+
+          el("guestEmail").value =
+`Subject: Your updated booking quote
+
+Kia ora,
+
+Thanks for your booking update. Summary below.
+
+— Original Booking —
+• Dates: ${dtNZ(os)} | ${dtNZ(oe)}
+• Rent: ${nzd(originalRentBundledC)}
+• Linen: ${nzd(b1.linen)}
+• Cleaning: ${nzd(b1.clean)}
+${b1.addAmt>0 ? `• Additional charge: ${nzd(b1.addAmt)}\n` : ""}• Booking fee: ${nzd(b1.fee)}
+• Total: ${nzd(total1)}
+
+— Updated Booking —
+• Dates: ${dtNZ(ns)} | ${dtNZ(ne)}
+• Rent: ${nzd(newRentBundledC)}
+• Booking fee: ${nzd(b2.fee)}
+${(amendTotalC>0)?`• Amendment fee: ${nzd(amendTotalC)}\n`:""}• New total: ${nzd(total2)}
+
+Amount due now: ${nzd(dueNowC2)}
+${remainingC2>0 ? `Remaining due on ${dtNZ(dueDate2)}: ${nzd(remainingC2)}\n` : ``}
+This quote is valid for 24 hours. To proceed, please call us and we’ll securely process the ${fullDiff>0?'payment':'refund'} over the phone. We’ll confirm everything by email once complete.
+
+Ngā mihi,
+Bachcare Team`;
+        }
+      } else {
+        el("guestEmail").value = "";
+      }
+
+      // Reflect fee box
+      el("fee2").value = (isDirectExt ? (extExtra?.feeNewTotalC||0) : b2.fee) / 100;
+      el("fee2").value = Number(el("fee2").value).toFixed(2);
+    }
+
+    function setInputsDisabled(containerId, disabled){
+      const cont = el(containerId);
+      if(!cont) return;
+      cont.querySelectorAll('input, select, textarea, button').forEach(n=>{ n.disabled = disabled; });
+      cont.classList.toggle('disabled-soft', disabled);
+    }
+    function toggleOriginalUI(direct){
+      el("obDirectFields").classList.toggle("hidden-soft", !direct);
+      el("obBreakdown").classList.toggle("hidden-soft", !direct);
+      setInputsDisabled("obDirectFields", !direct);
+      setInputsDisabled("obBreakdown",   !direct);
+
+      el("obOtaFields").classList.toggle("hidden-soft", direct);
+      el("obOtaSummary").classList.toggle("hidden-soft", direct);
+      setInputsDisabled("obOtaFields", direct);
+      setInputsDisabled("obOtaSummary", direct);
+
+      el("guestEmailCard").classList.toggle("hidden-soft", !direct);
+    }
+
+    // Calendars
+    function attachCalendars() {
+      const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
+      if (window.flatpickr) {
+        flatpickr("#origStart",  opts);
+        flatpickr("#origEnd",    opts);
+        flatpickr("#newStart",   opts);
+        flatpickr("#newEnd",     opts);
+        flatpickr("#createdAt",  opts);
+        const fpNewCreated = flatpickr("#newCreatedAt", opts);
+        // Default New Booking Created On to today (UTC-safe)
+        const now = new Date(); const todayISO = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()));
+        if (fpNewCreated) fpNewCreated.setDate(todayISO, true, "Y-m-d");
+      }
+    }
+
+    // Sessions storage
+    const SESS_KEY = "bachcareCalc:sessions";
+    function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
+    function refreshSessionPicker(){
+      const sel = el("sessionPicker"); if(!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">— none —</option>`;
+      const sessions = readSessions();
+      Object.keys(sessions).sort().forEach(name=>{
+        const opt = document.createElement("option");
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if(cur && sessions[cur]) sel.value = cur;
+    }
+    function collectNightlyRates(){
+      const arr = [];
+      document.querySelectorAll("#nightlyGrid .grid").forEach(row=>{
+        const dateTxt = row.querySelector(".text-sm")?.textContent?.trim()||"";
+        const val = row.querySelector(".nightRate")?.value||"";
+        arr.push({date: dateTxt, value: val});
+      });
+      return arr;
+    }
+    function applyNightlyRates(nightly){
+      if(!Array.isArray(nightly) || nightly.length===0) return;
+      nightly.forEach(n=>{
+        const rows = [...document.querySelectorAll("#nightlyGrid .grid")];
+        const row = rows.find(r => (r.querySelector(".text-sm")?.textContent||"").trim() === n.date);
+        if(row){
+          const inp = row.querySelector(".nightRate");
+          if(inp){ inp.value = n.value; }
+        }
+      });
+      sumNightly();
+    }
+    function collectFormData(){
+      const data = {};
+      document.querySelectorAll("#calcPane input, #calcPane select, #calcPane textarea").forEach(node=>{
+        if(!node.id) return;
+        data[node.id] = node.value;
+      });
+      data._nightly = collectNightlyRates();
+      return data;
+    }
+    function applyFormData(data){
+      if(!data || typeof data !== "object") return;
+      Object.keys(data).forEach(id=>{
+        if(id === "_nightly") return;
+        const node = el(id);
+        if(!node) return;
+        if (node._flatpickr && typeof data[id] === "string" && data[id]) { try { node._flatpickr.setDate(data[id], true, "Y-m-d"); } catch(_){} return; }
+        node.value = data[id];
+      });
+      compute(true);
+      applyNightlyRates(data._nightly);
+      compute(false);
+    }
+    function saveSessionNamed(name){
+      if(!name){ alert("Please enter a session name."); return; }
+      const all = readSessions(); all[name]=collectFormData();
+      localStorage.setItem(SESS_KEY, JSON.stringify(all)); refreshSessionPicker();
+      alert(`Saved session: ${name}`); el("sessionName").value = name; el("sessionPicker").value = name;
+    }
+    function loadSessionNamed(name){
+      const all = readSessions(); if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
+      applyFormData(all[name]); alert(`Loaded session: ${name}`);
+    }
+    function deleteSessionNamed(name){
+      const all = readSessions(); if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
+      if(!confirm(`Delete saved session "${name}"?`)) return;
+      delete all[name]; localStorage.setItem(SESS_KEY, JSON.stringify(all)); refreshSessionPicker(); alert(`Deleted session: ${name}`);
+    }
+
+    // Tabs — fixed for repeated use
+    document.querySelectorAll('.tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.getAttribute('data-tab');
+        ['calcPane','settingsPane','sessionsPane'].forEach(id=>{
+          document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById(target).classList.remove('hidden');
+      });
+    });
+
+    // Sync Settings → Platform dropdown
+    function syncChannelMarkupsToDropdown(){
+      const air = parseFloat(el('mkAirbnb')?.value || '25.5')/100;
+      const bco = parseFloat(el('mkBcom')?.value   || '23.9')/100;
+      const vrb = parseFloat(el('mkVrbo')?.value   || '20.2')/100;
+      const sel = el('channel'); const curKey = sel.value.split('|')[0];
+      sel.innerHTML = `
+        <option value="direct|Bachcare Direct|0">Bachcare Direct</option>
+        <option value="bcom|Booking.com|${bco.toFixed(3)}">Booking.com</option>
+        <option value="vrbo|VRBO|${vrb.toFixed(3)}">VRBO</option>
+        <option value="airbnb|Airbnb|${air.toFixed(3)}">Airbnb</option>`;
+      // restore selection (fallback to direct if missing)
+      const opts = [...sel.options];
+      const found = opts.find(o => o.value.split('|')[0]===curKey);
+      sel.value = found ? found.value : opts[0].value;
+      compute(false);
+    }
+
+    // Init
+    (function init() {
+      attachCalendars();
+
+      ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","createdAt","newCreatedAt"]
+        .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
+
+      ["origStart","origEnd","newStart","newEnd"]
+        .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
+
+      el("copyCOD")?.addEventListener("click", () => robustCopy("htmlCOD"));
+      el("copyGuestEmail")?.addEventListener("click", () => robustCopy("guestEmail"));
+
+      // Auto-fill new property ID from original when empty
+      el('propIdOld')?.addEventListener('input', () => {
+        const old = (el('propIdOld').value || '').trim();
+        if (!(el('propIdNew').value||'').trim()) { el('propIdNew').value = old; }
+      });
+
+      // Settings inputs → dropdown
+      ['mkAirbnb','mkBcom','mkVrbo'].forEach(id => el(id)?.addEventListener('input', syncChannelMarkupsToDropdown));
+      syncChannelMarkupsToDropdown();
+
+      refreshSessionPicker();
+      el("sessionSave").addEventListener("click", ()=> saveSessionNamed(el("sessionName").value.trim() || el("sessionPicker").value.trim()));
+      el("sessionLoad").addEventListener("click", ()=> loadSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
+      el("sessionDelete").addEventListener("click", ()=> deleteSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
+
+      el("resetBtn").addEventListener("click", ()=>{
+        document.querySelectorAll("#calcPane input, #calcPane textarea, #calcPane select").forEach(node=>{
+          if(node.id === "channel") return;
+          if(node._flatpickr){ try{ node._flatpickr.clear(); }catch(_){} return; }
+          node.value = (node.type === "number") ? 0 : "";
+        });
+        document.getElementById("nightlyGrid").innerHTML = "";
+        document.getElementById("rent2Sum").textContent = nzd(0);
+        lastNewStart = ""; lastNewEnd = "";
+        noOverlapAlerted = false;
+        compute(true);
+      });
+
+      compute(true);
+    })();
+  </script>
+</body>
+</html>
