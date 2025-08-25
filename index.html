@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.23) -->
-<!-- v0.23: Direct+Extension: charge booking fee DIFFERENCE based on recomputed total fee (min $40 / max $299); auto-waive amendment fee when fee diff > amendment; reflect in breakdown & email -->
+<!-- Bachcare Calculator — Base Working Version (v0.21) -->
+<!-- v0.21: Restore OTA (Airbnb/Booking.com) pop-ups for active-stay extension, portal date change, and free-cancellation approval windows -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Booking Adjustment Calculator (Standalone) — (v0.23)</title>
+  <title>Bachcare Calculator (Standalone) — (v0.21)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -27,7 +27,6 @@
     .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
     .hidden-soft{display:none}
     .disabled-soft{opacity:.5;pointer-events:none}
-    .required:after{content:" *"; color:#dc2626; font-weight:600}
     #previewCOD{max-height:20rem;overflow:auto}
     @media (min-width:1024px){ #htmlCOD{height:20rem} }
   </style>
@@ -63,22 +62,22 @@
         <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">Original Dates</h2>
-            <label class="block required"><span class="text-sm font-medium text-gray-700">Start</span>
-              <input type="text" id="origStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
+            <label class="block"><span class="text-sm font-medium text-gray-700">Start</span>
+              <input type="text" id="origStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
             </label>
-            <label class="block required"><span class="text-sm font-medium text-gray-700">End</span>
-              <input type="text" id="origEnd" placeholder="dd/mm/yyyy or yyyy-mm-dd" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
+            <label class="block"><span class="text-sm font-medium text-gray-700">End</span>
+              <input type="text" id="origEnd" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
             </label>
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="origNights">0</span></div>
           </section>
 
           <section class="card">
             <h2 class="text-xl font-semibold mb-3">New Dates</h2>
-            <label class="block required"><span class="text-sm font-medium text-gray-700">Start</span>
-              <input type="text" id="newStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
+            <label class="block"><span class="text-sm font-medium text-gray-700">Start</span>
+              <input type="text" id="newStart" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
             </label>
-            <label class="block required"><span class="text-sm font-medium text-gray-700">End</span>
-              <input type="text" id="newEnd" placeholder="dd/mm/yyyy or yyyy-mm-dd" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
+            <label class="block"><span class="text-sm font-medium text-gray-700">End</span>
+              <input type="text" id="newEnd" placeholder="dd/mm/yyyy or yyyy-mm-dd" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
             </label>
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="newNights">0</span></div>
           </section>
@@ -93,24 +92,18 @@
               <input type="text" id="propIdOld" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 341234">
             </label>
 
-            <!-- Original Created Date (GST transition) -->
-            <label class="block required mt-3"><span class="text-sm font-medium text-gray-700">Original Booking Created On</span>
-              <input type="text" id="createdAt" placeholder="dd/mm/yyyy or yyyy-mm-dd" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
-            </label>
-            <div class="mini mt-1">Used to apply GST transition (pre–1 Apr 2024 original bookings have no GST on the original rent component).</div>
-
             <!-- OTA-only simplified input -->
             <div id="obOtaFields" class="grid grid-cols-1 gap-3 mt-3 hidden-soft">
-              <label class="block required"><span class="text-sm font-medium text-gray-700">Total Holiday Cost</span>
-                <input type="text" id="otaTotal1" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Total Holiday Cost</span>
+                <input type="text" id="otaTotal1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00">
               </label>
               <div class="mini">Used when Platform is Airbnb, Booking.com or VRBO.</div>
             </div>
 
-            <!-- Direct-only full breakdown (GEL included in Rent input) -->
+            <!-- Direct-only full breakdown (GEL removed from original) -->
             <div id="obDirectFields" class="grid grid-cols-1 gap-3 mt-3">
-              <label class="block required"><span class="text-sm font-medium text-gray-700">Rent (total)</span>
-                <input type="text" id="rent1" required class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00">
+              <label class="block"><span class="text-sm font-medium text-gray-700">Rent (total)</span>
+                <input type="text" id="rent1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 1,250.00">
               </label>
               <label class="block"><span class="text-sm font-medium text-gray-700">Linen (manual)</span>
                 <input type="text" id="linen1" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required">
@@ -133,10 +126,9 @@
 
             <div class="border-t border-gray-100 my-2"></div>
 
-            <!-- Direct breakdown rows -->
+            <!-- Direct breakdown rows (no GEL row) -->
             <div id="obBreakdown" class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent</span><span id="obRent">$0.00</span></div>
-              <div class="row"><span class="text-gray-600">GST on Rent</span><span id="obGST">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Linen</span><span id="obLinen">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Cleaning</span><span id="obClean">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Booking Fee</span><span id="obFee">$0.00</span></div>
@@ -178,7 +170,7 @@
               <label class="block"><span class="text-sm font-medium text-gray-700">Cleaning (manual)</span>
                 <input type="text" id="clean2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="required">
               </label>
-              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee (auto, min $40 cap $299)</span>
+              <label class="block"><span class="text-sm font-medium text-gray-700">Booking Fee (auto, capped $299)</span>
                 <input type="text" id="fee2" class="mt-1 w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2" placeholder="auto" readonly>
               </label>
             </div>
@@ -198,21 +190,27 @@
               <label class="block"><span class="text-sm font-medium text-gray-700">Amendment Count</span>
                 <input type="number" min="0" step="1" id="amendCount2" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
               </label>
-              <div class="mini flex items-end">Per-fee value is set in&nbsp;<b>Settings</b>. (Direct only)</div>
+              <div class="mini flex items-end">Per-fee value is set in&nbsp;<b>Settings</b>.</div>
             </div>
 
             <div class="border-t border-gray-100 my-2"></div>
             <div class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent (sum nights)</span><span id="nbRent">$0.00</span></div>
-              <div class="row"><span class="text-gray-600">GST on Rent</span><span id="ownerGST2">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Linen</span><span id="nbLinen">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Cleaning</span><span id="nbClean">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Booking Fee (auto)</span><span id="nbFee">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Additional Charges</span><span id="nbAdd">$0.00</span></div>
               <div class="row"><span class="text-gray-600">GEL (auto)</span><span id="gelAuto2">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Channel Markup</span><span id="nbMarkup">$0.00</span></div>
+              <div class="row"><span class="text-gray-600">Owner GST Total</span><span id="ownerGST2">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Amendment Fee</span><span id="nbAmend">$0.00</span></div>
             </div>
+
+            <!-- Toggle: include Owner GST -->
+            <label class="mt-3 inline-flex items-center gap-2">
+              <input type="checkbox" id="includeOwnerGST" class="rounded border-gray-300">
+              <span class="text-sm text-gray-700">Add Owner GST Total to final cost</span>
+            </label>
 
             <div class="row mt-2"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold">$0.00</span></div>
           </section>
@@ -252,7 +250,7 @@
                   <h2 class="text-xl font-semibold mb-3">Guest Email (Direct bookings)</h2>
                   <textarea id="guestEmail" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm h-64" readonly></textarea>
                   <button id="copyGuestEmail" class="mt-2 px-3 py-2 rounded-xl bg-blue-600 text-white">Copy Email</button>
-                  <div class="mini mt-2">Updates automatically. Language aligned with ComCom guidance.</div>
+                  <div class="mini mt-2">This section shows only for <b>Bachcare Direct</b> and updates automatically.</div>
                 </section>
               </div>
             </div>
@@ -265,19 +263,19 @@
       <!-- Settings Pane -->
       <div id="settingsPane" class="p-4 hidden">
         <section class="card mb-4">
-          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">GST Rate (on rent)</span></div>
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Owner GST Rate</span></div>
           <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Applies to rent. Included in guest totals (transition logic based on Original Created Date).</div>
+          <div class="mini">Used for Owner GST Total (display or included), and for channel markup basis.</div>
         </section>
         <section class="card mb-4">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Booking Fee Rate</span></div>
           <input type="text" id="bookingFeeRate" value="0.071" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Fee = (Rent + GEL) × rate, but min $40, max $299.</div>
+          <div class="mini">New Booking Booking Fee = (Rent + GEL) × rate. Capped at $299.</div>
         </section>
         <section class="card mb-4">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Amendment Fee (each)</span></div>
           <input type="text" id="amendFeeEach" value="28.75" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Total Amendment Fee = count × per-fee (Direct only).</div>
+          <div class="mini">Total Amendment Fee = count × per-fee.</div>
         </section>
         <section class="card">
           <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Channel Markups</span></div>
@@ -286,7 +284,7 @@
             <label class="text-sm">Booking.com %<input type="text" id="mkBcom" value="23.9" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
             <label class="text-sm">VRBO %<input type="text" id="mkVrbo" value="20.2" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
           </div>
-          <div class="mini">Changes update the Platform dropdown.</div>
+          <div class="mini">Changing these updates the Platform dropdown on the Calculator tab.</div>
         </section>
       </div>
 
@@ -311,13 +309,140 @@
               <button id="sessionDelete" class="px-3 py-2 rounded-xl bg-red-600 text-white">Delete</button>
             </div>
           </div>
-          <div class="mini mt-2">Stored locally in your browser. Includes nightly rates.</div>
+          <div class="mini mt-2">Sessions are stored locally in your browser. Nightly “Daily Modifier Rates” are included.</div>
         </section>
       </div>
     </div>
   </div>
 
-  <!-- (Modal blocks unchanged from your last version) -->
+  <!-- Modal: Bachcare Direct non-overlap -->
+  <div id="directModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-red-50 border border-red-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="dm-title" class="text-xl font-semibold text-gray-900">Calculator not needed</h3>
+            <p id="dm-desc" class="mt-2 text-gray-700">
+              This is a <b>Bachcare Direct</b> booking and the <b>new dates do not overlap</b> the original dates.
+              Please create a <b>new offline booking</b> — that will give the correct total automatically.
+            </p>
+            <p class="mt-2 text-sm text-gray-500">You can still use the calculator if you need a manual comparison, but it’s not required for this scenario.</p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="dmClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Direct 30-day policy (Change/RON) -->
+  <div id="direct30Modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="d30-title" aria-describedby="d30-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-amber-50 border border-amber-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="d30-title" class="text-xl font-semibold text-gray-900">Approval required</h3>
+            <p id="d30-desc" class="mt-2 text-gray-700">
+              For <b>Bachcare Direct</b>, <b>date changes</b> and <b>reductions of nights</b> can only be processed <b>outside of 30 days</b> of the booking start per policy.
+              This request appears to be <b>inside 30 days</b>. Please seek <b>Team Leader approval</b> before proceeding.<br><br>
+              <i>If you are only <b>adding an extension</b> to the existing booking, you may disregard this message and click OK to continue.</i>
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="d30Close" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: OTA Extension during active stay (Airbnb/Booking.com) -->
+  <div id="otaExtActiveModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="oea-title" aria-describedby="oea-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-blue-50 border border-blue-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M5 12h14" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="oea-title" class="text-xl font-semibold text-gray-900">Extension during active stay</h3>
+            <p id="oea-desc" class="mt-2 text-gray-700">
+              For <b>Airbnb</b> and <b>Booking.com</b> extensions requested while the stay is <b>in progress</b>, please <b>take payment by phone</b>. Their portals typically do not allow last-minute changes.<br><br>
+              Also create a <b>workflow advising Finance</b> to note that partial payment was taken by phone while the balance will flow through the portal.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="oeaClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: OTA Portal Date Change guidance (Airbnb/Booking.com) -->
+  <div id="otaChangePortalModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ocp-title" aria-describedby="ocp-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-cyan-50 border border-cyan-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h6M4 6h16M4 18h16" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="ocp-title" class="text-xl font-semibold text-gray-900">Change of dates via portal</h3>
+            <p id="ocp-desc" class="mt-2 text-gray-700">
+              For <b>Airbnb</b> and <b>Booking.com</b> <b>change of dates</b>, please ask the guest to <b>request the change in the portal</b>. We will accept it on our side.<br><br>
+              This ensures their system calculates the correct amount. We <b>don’t need this calculator</b> for this process. Once approved, update Enterprise to match the portal and <b>copy their breakdown</b> into itinerary notes. <b>Workflow Finance</b> to adjust the Enterprise breakdown.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="ocpClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: OTA Free-cancellation approval (Airbnb/Booking.com) -->
+  <div id="otaApprovalModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="oap-title" aria-describedby="oap-desc">
+    <div class="modal">
+      <div class="p-6">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 rounded-full bg-amber-50 border border-amber-200 p-2 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </div>
+          <div>
+            <h3 id="oap-title" class="text-xl font-semibold text-gray-900">Outside free-cancellation window</h3>
+            <p id="oap-desc" class="mt-2 text-gray-700">
+              This <b><span id="oap-chan">OTA</span></b> request (<b><span id="oap-type">Change/RON</span></b>) appears to be <b>inside</b> the free-cancellation window.<br><br>
+              • <b>Booking.com:</b> 7 days before start<br>
+              • <b>Airbnb:</b> 30 days before start<br><br>
+              Please <b>seek Team Leader approval</b> before proceeding. Ensure all changes are noted in itinerary notes and that portal breakdowns are copied for Finance.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button id="oapClose" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ---------- Helpers ----------
@@ -325,10 +450,6 @@
     const toCents = (v) => { const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(/[^0-9.-]/g, "")); if (Number.isNaN(n)) return 0; return Math.round(n * 100); };
     const nzd = (c) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format((c || 0) / 100);
     const DAY = 86400000;
-    const GEL_PER_NIGHT_C = 1200;
-    const BOOKING_FEE_CAP_C = 29900;
-    const BOOKING_FEE_MIN_C = 4000;
-
     function todayUTC(){ const n=new Date(); return new Date(Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())); }
 
     // Dates
@@ -339,19 +460,174 @@
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d, m, y] = v.split("/").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
       const tryD = new Date(v); return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
     }
-    const dtIso = (d) => d?.toISOString().slice(0, 10);
+    const dtIso = (d) => d.toISOString().slice(0, 10);
     function dtNZ(d){ if(!(d instanceof Date) || isNaN(d)) return ""; const dd=String(d.getUTCDate()).padStart(2,'0'); const mm=String(d.getUTCMonth()+1).padStart(2,'0'); const yy=d.getUTCFullYear(); return `${dd}/${mm}/${yy}`; }
     const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
     const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
 
+    // ---------- Constants ----------
+    const GEL_PER_NIGHT_C = 1200;
+    const BOOKING_FEE_CAP_C = 29900;
+
     let lastNewStart = "", lastNewEnd = "";
+    let lastDirectModalKey = "";
+    let lastDirect30Key = "";
+
+    // OTA modal dedupe keys
+    let lastOtaExtKey = "";
+    let lastOtaChangeKey = "";
+    let lastOtaApprovalKey = "";
+
+    // ---------- Sessions (unchanged from v0.20) ----------
+    const SESS_KEY = "bachcareCalc:sessions";
+    function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
+    function writeSessions(obj){ localStorage.setItem(SESS_KEY, JSON.stringify(obj||{})); refreshSessionPicker(); }
+    function refreshSessionPicker(){
+      const sel = el("sessionPicker"); if(!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">— none —</option>`;
+      const sessions = readSessions();
+      Object.keys(sessions).sort().forEach(name=>{
+        const opt = document.createElement("option");
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if(cur && sessions[cur]) sel.value = cur;
+    }
+    function collectNightlyRates(){
+      const arr = [];
+      document.querySelectorAll("#nightlyGrid .grid").forEach(row=>{
+        const dateTxt = row.querySelector(".text-sm")?.textContent?.trim()||"";
+        const val = row.querySelector(".nightRate")?.value||"";
+        arr.push({date: dateTxt, value: val});
+      });
+      return arr;
+    }
+    function applyNightlyRates(nightly){
+      if(!Array.isArray(nightly) || nightly.length===0) return;
+      nightly.forEach(n=>{
+        const rows = [...document.querySelectorAll("#nightlyGrid .grid")];
+        const row = rows.find(r => (r.querySelector(".text-sm")?.textContent||"").trim() === n.date);
+        if(row){
+          const inp = row.querySelector(".nightRate");
+          if(inp){ inp.value = n.value; }
+        }
+      });
+      sumNightly();
+    }
+    function collectFormData(){
+      const data = {};
+      document.querySelectorAll("#calcPane input, #calcPane select, #calcPane textarea").forEach(node=>{
+        if(!node.id) return;
+        if(node.type === "checkbox") data[node.id] = !!node.checked;
+        else data[node.id] = node.value;
+      });
+      data._nightly = collectNightlyRates();
+      return data;
+    }
+    function applyFormData(data){
+      if(!data || typeof data !== "object") return;
+      Object.keys(data).forEach(id=>{
+        if(id === "_nightly") return;
+        const node = el(id);
+        if(!node) return;
+        if (node._flatpickr && typeof data[id] === "string" && data[id]) { try { node._flatpickr.setDate(data[id], true, "Y-m-d"); } catch(_){} return; }
+        if(node.type === "checkbox") node.checked = !!data[id];
+        else node.value = data[id];
+      });
+      compute(true);
+      applyNightlyRates(data._nightly);
+      compute(false);
+    }
+    function saveSessionNamed(name){
+      if(!name){ alert("Please enter a session name."); return; }
+      const all = readSessions();
+      all[name] = collectFormData();
+      writeSessions(all);
+      alert(`Saved session: ${name}`);
+      el("sessionName").value = name;
+      el("sessionPicker").value = name;
+    }
+    function loadSessionNamed(name){
+      const all = readSessions();
+      if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
+      applyFormData(all[name]);
+      alert(`Loaded session: ${name}`);
+    }
+    function deleteSessionNamed(name){
+      const all = readSessions();
+      if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
+      if(!confirm(`Delete saved session "${name}"?`)) return;
+      delete all[name];
+      writeSessions(all);
+      refreshSessionPicker();
+      alert(`Deleted session: ${name}`);
+    }
+
+    // ---------- UI helpers ----------
+    function resetCalculator(){
+      document.querySelectorAll("#calcPane input, #calcPane textarea, #calcPane select").forEach(node=>{
+        if(node.id === "channel") return;
+        if(node._flatpickr){ try{ node._flatpickr.clear(); }catch(_){} return; }
+        if(node.type === "checkbox") node.checked = false;
+        else node.value = "";
+      });
+      el("nightlyGrid").innerHTML = "";
+      el("rent2Sum").textContent = nzd(0);
+      if (el("amendCount2")) el("amendCount2").value = 0;
+      lastNewStart = ""; lastNewEnd = "";
+      compute(true);
+    }
 
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
       return { key, label, markup: parseFloat(mu) || 0 };
     }
+    function syncMarkupsToDropdown(){
+      const air = parseFloat(el('mkAirbnb')?.value||'0')/100;
+      const bc  = parseFloat(el('mkBcom')?.value||'0')/100;
+      const vr  = parseFloat(el('mkVrbo')?.value||'0')/100;
+      const chSel = el('channel');
+      if(!chSel) return;
+      [...chSel.options].forEach(opt=>{
+        if(opt.value.startsWith('airbnb|')) opt.value = `airbnb|Airbnb|${air}`;
+        if(opt.value.startsWith('bcom|'))   opt.value = `bcom|Booking.com|${bc}`;
+        if(opt.value.startsWith('vrbo|'))   opt.value = `vrbo|VRBO|${vr}`;
+      });
+    }
+    function setInputsDisabled(containerId, disabled){
+      const cont = el(containerId);
+      if(!cont) return;
+      cont.querySelectorAll('input, select, textarea, button').forEach(n=>{
+        if(n.id === 'otaTotal1' && disabled) return;
+        n.disabled = disabled;
+      });
+      cont.classList.toggle('disabled-soft', disabled);
+    }
+    function toggleOriginalUI(direct){
+      el("obDirectFields").classList.toggle("hidden-soft", !direct);
+      el("obBreakdown").classList.toggle("hidden-soft", !direct);
+      setInputsDisabled("obDirectFields", !direct);
+      setInputsDisabled("obBreakdown",   !direct);
 
-    // Nightly inputs
+      el("obOtaFields").classList.toggle("hidden-soft", direct);
+      el("obOtaSummary").classList.toggle("hidden-soft", direct);
+      setInputsDisabled("obOtaFields", direct);
+      setInputsDisabled("obOtaSummary", direct);
+
+      el("guestEmailCard").classList.toggle("hidden-soft", !direct);
+
+      // Amendment: direct only
+      const amendInp = el("amendCount2");
+      const nbAmend = el("nbAmend");
+      if (amendInp) {
+        amendInp.disabled = !direct;
+        amendInp.classList.toggle("disabled-soft", !direct);
+      }
+      if (nbAmend) nbAmend.textContent = direct ? "$0.00" : "N/A";
+    }
+
+    // ---------- Nightly inputs ----------
     function buildNightlyInputs() {
       const s = getDateVal("newStart"), e = getDateVal("newEnd");
       const grid = el("nightlyGrid");
@@ -397,51 +673,105 @@
       alert("Copied to clipboard.");
     }
 
-    // Scenario detection
+    // ---------- Scenario detection ----------
     function detectScenario(os, oe, ns, ne, propOld, propNew) {
       const hasBothProps = (propOld && propNew);
-      if (hasBothProps && propOld !== propNew) return { key: 'rehouse', label: 'Rehouse' };
+      if (hasBothProps && propOld !== propNew) return { key: 'rehouse', label: 'Rehouse', gstWaived: true };
 
       const origN = (os && oe) ? nightsBetween(os, oe) : 0;
       const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
       const overlap = overlaps(os, oe, ns, ne);
 
-      if (overlap && newN > origN) return { key: 'extension', label: 'Extension' };
-      if (overlap && newN < origN) return { key: 'ron', label: 'Reduction of Nights' };
+      if (overlap && newN > origN) return { key: 'extension', label: 'Extension', gstWaived: false };
+      if (overlap && newN < origN) return { key: 'ron', label: 'Reduction of Nights', gstWaived: false };
 
-      return { key: 'change', label: 'Change of Date' };
+      return { key: 'change', label: 'Change of Date', gstWaived: false };
     }
 
-    // Extension helpers
-    function listExtraNightDates(os, oe, ns, ne){
-      const out = [];
-      if(!ns || !ne) return out;
-      let cur = new Date(ns.getTime());
-      while(cur < ne){
-        if(!(os && oe && cur >= os && cur < oe)) out.push(dtIso(cur));
-        cur = new Date(cur.getTime()+DAY);
+    // ---------- Popups ----------
+    function maybeShowDirectModal(chKey, os, oe, ns, ne) {
+      const modal = el('directModal');
+      if (!modal) return;
+      if (!os || !oe || !ns || !ne) return;
+      const noOverlap = !(overlaps(os, oe, ns, ne));
+      const key = `${chKey}|${os?.toISOString()}|${oe?.toISOString()}|${ns?.toISOString()}|${ne?.toISOString()}`;
+      if (chKey === 'direct' && noOverlap && lastDirectModalKey !== key) {
+        lastDirectModalKey = key;
+        modal.classList.remove('hidden');
+        setTimeout(()=> el('dmClose')?.focus(), 0);
       }
-      return out;
     }
-    function sumRatesForDates(dateIsoArray){
-      let sum = 0;
-      dateIsoArray.forEach(iso=>{
-        const row = [...document.querySelectorAll("#nightlyGrid .grid")].find(r => (r.querySelector(".text-sm")?.textContent||"")===iso);
-        if(row){ const v = row.querySelector(".nightRate")?.value || "0"; sum += toCents(v); }
-      });
-      return sum;
+    function maybeShowDirect30Policy(chKey, scenarioKey, os){
+      if (chKey !== 'direct' || !os) return;
+      if (!(scenarioKey === 'change' || scenarioKey === 'ron')) return;
+      const today = todayUTC();
+      const daysToStart = Math.round((os - today) / DAY);
+      if (daysToStart <= 30) {
+        const key = `${chKey}|${scenarioKey}|${os.toISOString()}`;
+        if (lastDirect30Key !== key) {
+          lastDirect30Key = key;
+          el('direct30Modal').classList.remove('hidden');
+          setTimeout(()=> el('d30Close')?.focus(), 0);
+        }
+      }
     }
 
-    // Main compute
+    // OTA: Extension during active stay (Airbnb/Booking.com)
+    function maybeShowOtaExtWhileActive(chKey, scenarioKey, os, oe){
+      if (!(chKey === 'airbnb' || chKey === 'bcom')) return;
+      if (scenarioKey !== 'extension') return;
+      if (!os || !oe) return;
+      const today = todayUTC();
+      const isActive = (today >= os) && (today < oe);
+      if (!isActive) return;
+      const key = `${chKey}|extActive|${os.toISOString()}|${oe.toISOString()}`;
+      if (lastOtaExtKey === key) return;
+      lastOtaExtKey = key;
+      el('otaExtActiveModal').classList.remove('hidden');
+      setTimeout(()=> el('oeaClose')?.focus(), 0);
+    }
+
+    // OTA: Change of dates must go via portal (Airbnb/Booking.com)
+    function maybeShowOtaChangePortal(chKey, scenarioKey){
+      if (!(chKey === 'airbnb' || chKey === 'bcom')) return;
+      if (scenarioKey !== 'change') return;
+      const key = `${chKey}|changePortal`;
+      if (lastOtaChangeKey === key) return;
+      lastOtaChangeKey = key;
+      el('otaChangePortalModal').classList.remove('hidden');
+      setTimeout(()=> el('ocpClose')?.focus(), 0);
+    }
+
+    // OTA: Approval modal inside free-cancellation window
+    function maybeShowOtaApproval(chKey, scenarioKey, os){
+      if (!(chKey === 'airbnb' || chKey === 'bcom')) return;
+      if (!(scenarioKey === 'change' || scenarioKey === 'ron')) return;
+      if (!os) return;
+      const today = todayUTC();
+      const daysToStart = Math.round((os - today) / DAY);
+      const threshold = (chKey === 'bcom') ? 7 : 30;
+      if (daysToStart > threshold) return;
+      const key = `${chKey}|approv|${scenarioKey}|${os.toISOString()}`;
+      if (lastOtaApprovalKey === key) return;
+      lastOtaApprovalKey = key;
+      // Set dynamic labels
+      el('oap-chan').textContent = (chKey === 'bcom') ? 'Booking.com' : 'Airbnb';
+      el('oap-type').textContent = (scenarioKey === 'ron') ? 'Reduction of Nights' : 'Change of Date';
+      el('otaApprovalModal').classList.remove('hidden');
+      setTimeout(()=> el('oapClose')?.focus(), 0);
+    }
+
+    // ---------- Main compute ----------
     function compute(rebuildDates = true) {
+      // Dates & nights
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
       const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
-      const createdAt = getDateVal("createdAt");
       const origN = (os && oe) ? nightsBetween(os, oe) : 0;
       const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
       el("origNights").textContent = origN;
       el("newNights").textContent  = newN;
 
+      // Rebuild nightly grid if needed
       if (rebuildDates) {
         const nsStr = el("newStart").value || "";
         const neStr = el("newEnd").value || "";
@@ -453,13 +783,23 @@
 
       const ch = currentChannel();
       const direct = ch.key === 'direct';
+      toggleOriginalUI(direct);
 
-      const gstRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
+      // Modals
+      maybeShowDirectModal(ch.key, os, oe, ns, ne);
+
+      // Settings/toggles
+      const ownerGSTRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
       const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071");
       const amendFeeEachC = toCents(el("amendFeeEach")?.value || "28.75");
       const amendCount = parseInt(el("amendCount2")?.value || "0", 10) || 0;
+      const includeOwnerGST = !!el("includeOwnerGST")?.checked;
 
-      // Original (Direct)
+      // Properties
+      const propOld = (el("propIdOld")?.value || "").trim();
+      const propNew = (el("propIdNew")?.value || "").trim();
+
+      // Original booking (Direct) — GEL removed
       const b1 = {
         rent: toCents(el("rent1").value),
         linen: toCents(el("linen1").value),
@@ -468,15 +808,15 @@
         addInfo: (el("addInfo1").value || "").trim(),
         addAmt: toCents(el("addAmt1").value)
       };
+      const gel1 = 0;
 
-      // New (sum nightly)
+      // New booking (sum nightly)
       const rent2 = sumNightly();
-      const newNightsCount = (ns && ne) ? nightsBetween(ns, ne) : 0;
-      const gel2 = newNightsCount * GEL_PER_NIGHT_C;
+      const gel2 = (ns && ne) ? nightsBetween(ns, ne) * GEL_PER_NIGHT_C : 0;
 
-      // Standard booking fee calc (full-new basis)
+      // Booking Fee auto
       const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
-      const fee2 = Math.max(BOOKING_FEE_MIN_C, Math.min(fee2RawC, BOOKING_FEE_CAP_C));
+      const fee2 = Math.min(fee2RawC, BOOKING_FEE_CAP_C);
 
       const b2 = {
         rent: rent2,
@@ -487,72 +827,42 @@
         addAmt: toCents(el("addAmt2").value)
       };
 
-      // Markups (keep consistent with prior logic; extensions do not add markup deltas)
-      const ownerGST1C_forMarkup = Math.round(b1.rent * gstRate);
-      const ownerGST2C_forMarkup = Math.round(b2.rent * gstRate);
-      const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee) * ch.markup);
+      // Markups (GST influences markup base)
+      const ownerGST1C_forMarkup = Math.round(b1.rent * ownerGSTRate);
+      const ownerGST2C_forMarkup = Math.round(b2.rent * ownerGSTRate);
+      const markup1C = Math.round((b1.rent + ownerGST1C_forMarkup + b1.fee + gel1) * ch.markup);
       const markup2C = Math.round((b2.rent + ownerGST2C_forMarkup + b2.fee + gel2) * ch.markup);
 
-      // GST transition on original
-      const gstCutoff = new Date(Date.UTC(2024,3,1));
-      const createdOk = createdAt instanceof Date && !isNaN(createdAt);
-      const gstAppliesOriginal = createdOk ? (createdAt >= gstCutoff) : true;
-      const ownerGST1C = gstAppliesOriginal ? Math.round(b1.rent * gstRate) : 0;
-      const ownerGST2C = Math.round(b2.rent * gstRate);
+      // Owner GST (display/inclusion toggle for new)
+      const ownerGST2C = Math.round(b2.rent * ownerGSTRate);
 
-      // Amendment (direct only; can be auto-waived later)
+      // Amendment (direct only)
       const amendTotalC = direct ? (Math.max(0, amendCount) * amendFeeEachC) : 0;
 
-      // Totals baseline
+      // Totals
       let total1;
       if (direct) {
-        total1 = b1.rent + ownerGST1C + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C;
+        total1 = b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C;
       } else {
-        total1 = toCents(el("otaTotal1")?.value || 0);
+        const otaC = toCents(el("otaTotal1")?.value || 0);
+        total1 = otaC;
       }
-
-      const scen = detectScenario(os, oe, ns, ne, (el("propIdOld")?.value||"").trim(), (el("propIdNew")?.value||"").trim());
-
-      // --- Direct Extension special logic ---
-      let total2, feeDiffC = 0, chargedAmendC = amendTotalC, extExtra = null, feeNewTotalC = b2.fee;
-      if (direct && scen.key === 'extension' && os && oe && ns && ne) {
-        // identify added nights
-        const extraDates = listExtraNightDates(os, oe, ns, ne);
-        const extraRentC = sumRatesForDates(extraDates);
-        const extraGelC  = extraDates.length * GEL_PER_NIGHT_C;
-        const extraGSTC  = Math.round(extraRentC * gstRate);
-
-        // recompute TOTAL booking fee as if added to original:
-        // original rent already includes GEL (per earlier spec)
-        const feeBaseCombinedC = b1.rent + extraRentC + extraGelC;
-        const feeCombinedRawC  = Math.round(feeBaseCombinedC * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
-        feeNewTotalC = Math.max(BOOKING_FEE_MIN_C, Math.min(feeCombinedRawC, BOOKING_FEE_CAP_C));
-
-        // guest pays only the diff vs original fee (no refunds if negative)
-        feeDiffC = Math.max(0, feeNewTotalC - b1.fee);
-
-        // auto-waive amendment if the fee difference is larger
-        if (feeDiffC > chargedAmendC) chargedAmendC = 0;
-
-        // New total = Original + extras only (rent+GEL+GST) + booking fee diff + (amendment maybe waived)
-        total2 = total1 + extraRentC + extraGelC + extraGSTC + feeDiffC + chargedAmendC;
-
-        // keep for breakdown rendering
-        extExtra = { extraRentC, extraGelC, extraGSTC, feeDiffC, feeNewTotalC, chargedAmendC };
-      } else {
-        // Non-extension or non-direct: standard new total
-        const total2Base = b2.rent + ownerGST2C + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + amendTotalC;
-        total2 = total2Base;
-      }
-
+      const total2Base = b2.rent + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + amendTotalC;
+      const total2 = includeOwnerGST ? (total2Base + ownerGST2C) : total2Base;
       const diff   = total2 - total1;
 
-      // Scenario badge
+      // Scenario
+      const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
 
-      // UI numbers
+      // Show policy popups
+      maybeShowDirect30Policy(ch.key, scen.key, os);
+      maybeShowOtaExtWhileActive(ch.key, scen.key, os, oe);
+      maybeShowOtaChangePortal(ch.key, scen.key);
+      maybeShowOtaApproval(ch.key, scen.key, os);
+
+      // UI breakdowns
       el("obRent").textContent   = nzd(b1.rent);
-      el("obGST").textContent    = nzd(ownerGST1C);
       el("obLinen").textContent  = nzd(b1.linen);
       el("obClean").textContent  = nzd(b1.clean);
       el("obFee").textContent    = nzd(b1.fee);
@@ -561,15 +871,14 @@
       el("obOtaTotal").textContent = nzd(total1);
 
       el("nbRent").textContent   = nzd(b2.rent);
-      el("ownerGST2").textContent = nzd(ownerGST2C);
       el("nbLinen").textContent  = nzd(b2.linen);
       el("nbClean").textContent  = nzd(b2.clean);
-      // Show the overall updated fee (for extension show recomputed total fee so the input matches what finance expects)
-      el("nbFee").textContent    = (direct && scen.key==='extension') ? nzd(feeNewTotalC) : nzd(b2.fee);
+      el("nbFee").textContent    = nzd(b2.fee);
       el("nbAdd").textContent    = nzd(b2.addAmt);
       el("gelAuto2").textContent = nzd(gel2);
       el("nbMarkup").textContent = nzd(markup2C);
-      el("nbAmend").textContent  = (direct ? ( (scen.key==='extension' && chargedAmendC===0) ? "Waived (covered by booking fee difference)" : (amendTotalC > 0 ? nzd(chargedAmendC) : "Waived") ) : "N/A");
+      el("ownerGST2").textContent = nzd(ownerGST2C);
+      el("nbAmend").textContent = direct ? (amendTotalC > 0 ? nzd(amendTotalC) : "Waived") : "N/A";
 
       el("total1").textContent   = nzd(total1);
       el("total2").textContent   = nzd(total2);
@@ -579,22 +888,21 @@
       el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
       el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
 
-      // Toggle direct vs OTA UI & email visibility
-      toggleOriginalUI(direct);
-
       // ---- Finance Breakdown (HTML + Preview) ----
-      const origDatesLine = (os && oe) ? `Check-in: ${dtNZ(os)} &nbsp;|&nbsp; Check-out: ${dtNZ(oe)} &nbsp;|&nbsp; Nights: ${nightsBetween(os,oe)}<br>` : "";
-      const newDatesLine  = (ns && ne) ? `Check-in: ${dtNZ(ns)} &nbsp;|&nbsp; Check-out: ${dtNZ(ne)} &nbsp;|&nbsp; Nights: ${nightsBetween(ns,ne)}<br>` : "";
       const header =
         "<b>Booking Breakdown</b><br>" +
         `<b>Channel:</b> ${ch.label} (Markup ${(ch.markup * 100).toFixed(1)}%)<br>` +
         `<b>Scenario:</b> ${scen.label}<br><br>`;
 
-      const originalHtml = (direct)
+      const origNights = (os && oe) ? nightsBetween(os, oe) : 0;
+      const newNights  = (ns && ne) ? nightsBetween(ns, ne) : 0;
+      const origDatesLine = (os && oe) ? `Check-in: ${dtNZ(os)} &nbsp;|&nbsp; Check-out: ${dtNZ(oe)} &nbsp;|&nbsp; Nights: ${origNights}<br>` : "";
+      const newDatesLine  = (ns && ne) ? `Check-in: ${dtNZ(ns)} &nbsp;|&nbsp; Check-out: ${dtNZ(ne)} &nbsp;|&nbsp; Nights: ${newNights}<br>` : "";
+
+      const originalHtml = (ch.key === 'direct')
         ? "<b>Original Booking</b><br>" +
           origDatesLine +
           `Rent: ${nzd(b1.rent)}<br>` +
-          `GST on Rent: ${nzd(ownerGST1C)}${!gstAppliesOriginal ? " (transition: not charged)" : ""}<br>` +
           `Linen: ${nzd(b1.linen)}<br>` +
           `Cleaning: ${nzd(b1.clean)}<br>` +
           `Booking Fee: ${nzd(b1.fee)}<br>` +
@@ -603,32 +911,18 @@
           origDatesLine +
           `Total Holiday Cost: ${nzd(total1)}<br><br>`;
 
-      let newHtml = "";
-      if (direct && scen.key==='extension' && extExtra){
-        newHtml =
-          "<b>New Booking (Extension)</b><br>" +
-          newDatesLine +
-          `Added Rent (extra night[s]): ${nzd(extExtra.extraRentC)}<br>` +
-          `Added GEL: ${nzd(extExtra.extraGelC)}<br>` +
-          `GST on Added Rent: ${nzd(extExtra.extraGSTC)}<br>` +
-          `Booking Fee (difference): ${nzd(extExtra.feeDiffC)} (updated total fee: ${nzd(extExtra.feeNewTotalC)})<br>` +
-          (extExtra.chargedAmendC===0 ? `Amendment Fee: Waived (covered by booking fee difference)<br>` : `Amendment Fee: ${nzd(extExtra.chargedAmendC)}<br>`) +
-          `<i>Direct Extension rule: only added nights are charged; earlier nights left unchanged.</i><br>` +
-          `Total: ${nzd(total2)}<br><br>`;
-      } else {
-        newHtml =
-          "<b>New Booking</b><br>" +
-          newDatesLine +
-          `Rent (sum nights): ${nzd(b2.rent)}<br>` +
-          `GEL: ${nzd(gel2)}<br>` +
-          `GST on Rent: ${nzd(ownerGST2C)}<br>` +
-          `Channel Markup: ${nzd(markup2C)}<br>` +
-          `Linen: ${nzd(b2.linen)}<br>` +
-          `Cleaning: ${nzd(b2.clean)}<br>` +
-          `Booking Fee (auto, min $40 cap $299): ${nzd(b2.fee)}<br>` +
-          (direct ? (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) : `Amendment Fee: N/A<br>`) +
-          `Total: ${nzd(total2)}<br><br>`;
-      }
+      const newHtml =
+        "<b>New Booking</b><br>" +
+        newDatesLine +
+        `Rent (sum nights): ${nzd(b2.rent)}<br>` +
+        `GEL: ${nzd(gel2)}<br>` +
+        `Channel Markup: ${nzd(markup2C)}<br>` +
+        (includeOwnerGST ? `Owner GST Total: ${nzd(ownerGST2C)}<br>` : "") +
+        `Linen: ${nzd(b2.linen)}<br>` +
+        `Cleaning: ${nzd(b2.clean)}<br>` +
+        `Booking Fee (auto, cap $299): ${nzd(b2.fee)}<br>` +
+        (direct ? (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) : `Amendment Fee: N/A<br>`) +
+        `Total: ${nzd(total2)}<br><br>`;
 
       const outcomeHtml = diff >= 0
         ? `Amount to charge guest: ${nzd(diff)}<br>`
@@ -638,100 +932,49 @@
       el("htmlCOD").value = html;
       el("previewCOD").innerHTML = html;
 
-      // ---- Direct-only guest email (with fee difference note) ----
+      // ---- Direct-only pre-drafted email (unchanged from v0.20) ----
       if (direct) {
+        const ownerGSTRate = parseFloat(el("ownerGSTRate").value||"0.15");
+        const rentOriginalEmailC = b1.rent + (includeOwnerGST ? Math.round(b1.rent*ownerGSTRate) : 0);
+        const rentNewEmailC = b2.rent + gel2 + (includeOwnerGST ? Math.round(b2.rent*ownerGSTRate) : 0);
         const phrase = scen.label.toLowerCase();
-        const baseEmailTop =
-`Subject: Your updated booking quote
 
-Kia ora,
+        const email =
+`Subject: Updated Booking Quote – ${ch.label}
 
-Thanks for your ${phrase} request. Below is a clear summary of your original booking and the updated booking.
+Hi there,
+
+Thank you for your ${phrase} request. Please find a clear comparison of your original booking and the updated booking below.
+This quote is valid for 24 hours. Please give us a call to confirm so we can process the ${diff>=0?'payment':'refund'} accordingly.
 
 — Original Booking —
-• Dates: ${origDatesLine.replace(/<br>/g,'').replace(/&nbsp;\|&nbsp;/g,' | ')}
-• Rent: ${nzd(b1.rent)}${!gstAppliesOriginal ? " (GST not charged under transition)" : ""}
-• GST on Rent: ${nzd(ownerGST1C)}
+• Rent: ${nzd(rentOriginalEmailC)}
 • Linen: ${nzd(b1.linen)}
 • Cleaning: ${nzd(b1.clean)}
 • Booking Fee: ${nzd(b1.fee)}
-• Total: ${nzd(total1)}
-`;
-        let updatedBlock = "";
-        if (direct && scen.key==='extension' && extExtra){
-          updatedBlock =
-`— Updated Booking (Extension) —
-• Added rent (extra night[s]): ${nzd(extExtra.extraRentC)}
-• Added GEL: ${nzd(extExtra.extraGelC)}
-• GST on added rent: ${nzd(extExtra.extraGSTC)}
-• Booking fee difference to apply: ${nzd(extExtra.feeDiffC)} (updated total fee: ${nzd(extExtra.feeNewTotalC)})
-• Amendment fee: ${extExtra.chargedAmendC===0 ? "Waived (covered by booking fee difference)" : nzd(extExtra.chargedAmendC)}
-• New total: ${nzd(total2)}
-`;
-        } else {
-          updatedBlock =
-`— Updated Booking —
-• Dates: ${newDatesLine.replace(/<br>/g,'').replace(/&nbsp;\|&nbsp;/g,' | ')}
-• Rent: ${nzd(b2.rent)}
-• GST on rent: ${nzd(ownerGST2C)}
-• GEL: ${nzd(gel2)}
-• Channel markup: ${nzd(markup2C)}
+• Original Total: ${nzd(total1)}
+
+— New Booking —
+• Rent: ${nzd(rentNewEmailC)}
 • Linen: ${nzd(b2.linen)}
 • Cleaning: ${nzd(b2.clean)}
-• Booking fee: ${nzd(b2.fee)}
-• New total: ${nzd(total2)}
-`;
-        }
-        const tail =
-`
-${diff >= 0 ? `Amount to pay: ${nzd(diff)}` : `Amount we’ll refund: ${nzd(-diff)}`}
+• Booking Fee: ${nzd(b2.fee)}${(amendTotalC>0?`\n• Amendment Fee: ${nzd(amendTotalC)}`:`\n• Amendment Fee: Waived`)}
+• New Total: ${nzd(total2)}
 
-This quote is valid for 24 hours. Please call us to confirm so we can process the ${diff>=0?'payment':'refund'}.
+${diff >= 0 ? `Amount to charge: ${nzd(diff)} once you confirm by phone.` : `Amount to refund: ${nzd(-diff)} once you confirm by phone.`}
 
-Ngā mihi,
+Kind regards,
 Bachcare Team`;
-        el("guestEmail").value = baseEmailTop + "\n" + updatedBlock + tail;
+        el("guestEmail").value = email;
       } else {
         el("guestEmail").value = "";
       }
 
-      // Reflect fee input for transparency:
-      // - Normal case: show new booking fee
-      // - Direct Extension: show recomputed TOTAL fee (original + added), not just the diff
-      el("fee2").value = ( (direct && scen.key==='extension') ? (extExtra?.feeNewTotalC||0) : b2.fee ) / 100;
-      el("fee2").value = Number(el("fee2").value).toFixed(2);
+      // Reflect fee2 read-only
+      el("fee2").value = (b2.fee / 100).toFixed(2);
     }
 
-    // UI toggles
-    function setInputsDisabled(containerId, disabled){
-      const cont = el(containerId);
-      if(!cont) return;
-      cont.querySelectorAll('input, select, textarea, button').forEach(n=>{ n.disabled = disabled; });
-      cont.classList.toggle('disabled-soft', disabled);
-    }
-    function toggleOriginalUI(direct){
-      el("obDirectFields").classList.toggle("hidden-soft", !direct);
-      el("obBreakdown").classList.toggle("hidden-soft", !direct);
-      setInputsDisabled("obDirectFields", !direct);
-      setInputsDisabled("obBreakdown",   !direct);
-
-      el("obOtaFields").classList.toggle("hidden-soft", direct);
-      el("obOtaSummary").classList.toggle("hidden-soft", direct);
-      setInputsDisabled("obOtaFields", direct);
-      setInputsDisabled("obOtaSummary", direct);
-
-      el("guestEmailCard").classList.toggle("hidden-soft", !direct);
-
-      const amendInp = el("amendCount2");
-      const nbAmend = el("nbAmend");
-      if (amendInp) {
-        amendInp.disabled = !direct;
-        amendInp.classList.toggle("disabled-soft", !direct);
-      }
-      if (nbAmend) nbAmend.textContent = direct ? "$0.00" : "N/A";
-    }
-
-    // Calendars
+    // ---------- Calendars ----------
     function attachCalendars() {
       const opts = { altInput:true, altFormat:"d/m/Y", dateFormat:"Y-m-d", allowInput:true, onChange: () => compute(true) };
       if (window.flatpickr) {
@@ -739,95 +982,10 @@ Bachcare Team`;
         flatpickr("#origEnd",   opts);
         flatpickr("#newStart",  opts);
         flatpickr("#newEnd",    opts);
-        flatpickr("#createdAt", opts);
       }
     }
 
-    // Sessions
-    const SESS_KEY = "bachcareCalc:sessions";
-    function readSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||"{}"); }catch(_){ return {}; } }
-    function writeSessions(obj){ localStorage.setItem(SESS_KEY, JSON.stringify(obj||{})); refreshSessionPicker(); }
-    function refreshSessionPicker(){
-      const sel = el("sessionPicker"); if(!sel) return;
-      const cur = sel.value;
-      sel.innerHTML = `<option value="">— none —</option>`;
-      const sessions = readSessions();
-      Object.keys(sessions).sort().forEach(name=>{
-        const opt = document.createElement("option");
-        opt.value = name; opt.textContent = name;
-        sel.appendChild(opt);
-      });
-      if(cur && sessions[cur]) sel.value = cur;
-    }
-    function collectNightlyRates(){
-      const arr = [];
-      document.querySelectorAll("#nightlyGrid .grid").forEach(row=>{
-        const dateTxt = row.querySelector(".text-sm")?.textContent?.trim()||"";
-        const val = row.querySelector(".nightRate")?.value||"";
-        arr.push({date: dateTxt, value: val});
-      });
-      return arr;
-    }
-    function applyNightlyRates(nightly){
-      if(!Array.isArray(nightly) || nightly.length===0) return;
-      nightly.forEach(n=>{
-        const rows = [...document.querySelectorAll("#nightlyGrid .grid")];
-        const row = rows.find(r => (r.querySelector(".text-sm")?.textContent||"").trim() === n.date);
-        if(row){
-          const inp = row.querySelector(".nightRate");
-          if(inp){ inp.value = n.value; }
-        }
-      });
-      sumNightly();
-    }
-    function collectFormData(){
-      const data = {};
-      document.querySelectorAll("#calcPane input, #calcPane select, #calcPane textarea").forEach(node=>{
-        if(!node.id) return;
-        data[node.id] = node.value;
-      });
-      data._nightly = collectNightlyRates();
-      return data;
-    }
-    function applyFormData(data){
-      if(!data || typeof data !== "object") return;
-      Object.keys(data).forEach(id=>{
-        if(id === "_nightly") return;
-        const node = el(id);
-        if(!node) return;
-        if (node._flatpickr && typeof data[id] === "string" && data[id]) { try { node._flatpickr.setDate(data[id], true, "Y-m-d"); } catch(_){} return; }
-        node.value = data[id];
-      });
-      compute(true);
-      applyNightlyRates(data._nightly);
-      compute(false);
-    }
-    function saveSessionNamed(name){
-      if(!name){ alert("Please enter a session name."); return; }
-      const all = readSessions();
-      all[name] = collectFormData();
-      writeSessions(all);
-      alert(`Saved session: ${name}`);
-      el("sessionName").value = name;
-      el("sessionPicker").value = name;
-    }
-    function loadSessionNamed(name){
-      const all = readSessions();
-      if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
-      applyFormData(all[name]);
-      alert(`Loaded session: ${name}`);
-    }
-    function deleteSessionNamed(name){
-      const all = readSessions();
-      if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
-      if(!confirm(`Delete saved session "${name}"?`)) return;
-      delete all[name];
-      writeSessions(all);
-      refreshSessionPicker();
-      alert(`Deleted session: ${name}`);
-    }
-
-    // Tabs
+    // ---------- Tabs ----------
     document.querySelectorAll('.tab').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
@@ -840,21 +998,48 @@ Bachcare Team`;
       });
     });
 
-    // Init
+    // ---------- Init ----------
     (function init() {
       attachCalendars();
+      // sync markups shown in dropdown labels from Settings
+      (function syncMarkupsToDropdown(){
+        const air = parseFloat(el('mkAirbnb')?.value||'0')/100;
+        const bc  = parseFloat(el('mkBcom')?.value||'0')/100;
+        const vr  = parseFloat(el('mkVrbo')?.value||'0')/100;
+        const chSel = el('channel');
+        if(!chSel) return;
+        [...chSel.options].forEach(opt=>{
+          if(opt.value.startsWith('airbnb|')) opt.value = `airbnb|Airbnb|${air}`;
+          if(opt.value.startsWith('bcom|'))   opt.value = `bcom|Booking.com|${bc}`;
+          if(opt.value.startsWith('vrbo|'))   opt.value = `vrbo|VRBO|${vr}`;
+        });
+      })();
 
-      // Recompute on inputs
-      ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","createdAt"]
+      // Inputs that recompute
+      ["channel","ownerGSTRate","bookingFeeRate","amendFeeEach","linen1","clean1","rent1","fee1","addInfo1","addAmt1","otaTotal1","linen2","clean2","addInfo2","addAmt2","propIdOld","propIdNew","amendCount2","includeOwnerGST"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(false)); n.addEventListener("change", () => compute(false)); } });
 
-      // Dates trigger nightly grid rebuild
+      // Dates trigger recompute WITH nightly grid rebuild
       ["origStart","origEnd","newStart","newEnd"]
         .forEach(id => { const n = el(id); if (n) { n.addEventListener("input", () => compute(true)); n.addEventListener("change", () => compute(true)); } });
 
+      // Modal closes
+      el('dmClose')?.addEventListener('click', ()=> el('directModal').classList.add('hidden'));
+      el('d30Close')?.addEventListener('click', ()=> el('direct30Modal').classList.add('hidden'));
+      el('oeaClose')?.addEventListener('click', ()=> el('otaExtActiveModal').classList.add('hidden'));
+      el('ocpClose')?.addEventListener('click', ()=> el('otaChangePortalModal').classList.add('hidden'));
+      el('oapClose')?.addEventListener('click', ()=> el('otaApprovalModal').classList.add('hidden'));
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){
+        el('directModal')?.classList.add('hidden');
+        el('direct30Modal')?.classList.add('hidden');
+        el('otaExtActiveModal')?.classList.add('hidden');
+        el('otaChangePortalModal')?.classList.add('hidden');
+        el('otaApprovalModal')?.classList.add('hidden');
+      }});
+
       // Copy buttons
-      el("copyCOD")?.addEventListener("click", () => robustCopy("htmlCOD"));
-      el("copyGuestEmail")?.addEventListener("click", () => robustCopy("guestEmail"));
+      el("copyCOD").addEventListener("click", () => robustCopy("htmlCOD"));
+      el("copyGuestEmail").addEventListener("click", () => robustCopy("guestEmail"));
 
       // Sessions
       refreshSessionPicker();
@@ -863,17 +1048,7 @@ Bachcare Team`;
       el("sessionDelete").addEventListener("click", ()=> deleteSessionNamed(el("sessionPicker").value.trim() || el("sessionName").value.trim()));
 
       // Reset
-      el("resetBtn").addEventListener("click", ()=>{
-        document.querySelectorAll("#calcPane input, #calcPane textarea, #calcPane select").forEach(node=>{
-          if(node.id === "channel") return;
-          if(node._flatpickr){ try{ node._flatpickr.clear(); }catch(_){} return; }
-          node.value = (node.type === "number") ? 0 : "";
-        });
-        document.getElementById("nightlyGrid").innerHTML = "";
-        document.getElementById("rent2Sum").textContent = nzd(0);
-        lastNewStart = ""; lastNewEnd = "";
-        compute(true);
-      });
+      el("resetBtn").addEventListener("click", resetCalculator);
 
       // First compute
       compute(true);
