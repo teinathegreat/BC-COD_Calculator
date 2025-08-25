@@ -1,20 +1,19 @@
+<!-- Part 1 of 3 -->
 <!DOCTYPE html>
-<!-- Bachcare Calculator — Base Working Version (v0.28)
- v0.28 changes:
- • Pop-ups restored: Settings helper, Nightly rates helper, Direct/no-overlap guidance (one-time each)
- • Tabs fixed (no {once:true})
- • Adjacent date ranges are NOT overlapping
- • Settings → Channel Markups live-update the Platform dropdown
- • New Property ID auto-fills from Original (editable; clearer placeholder)
- • Direct Extension: Booking Fee becomes “Additional Booking Fee” (no min cap, no offsets)
- • Amendment Fee is strictly count × $28.75 (no offsets)
- • “GST on Rent (auto)” label visible where appropriate
+<!-- Bachcare Calculator — Working Version (v0.29)
+  Changes in v0.29:
+  • Direct Bachcare Extension: “Additional Booking Fee” is now calculated ONLY on the added nights
+    = (extra rent + extra GEL) × bookingFeeRate — with NO minimum cap and NO maximum cap.
+    If it’s one night below $40, that exact smaller amount is charged.
+  • Amendment fee remains: count × $28.75 (no offsets).
+  • Pop-ups replaced with a centered modal (backdrop) for consistency & reliability.
+  • Tabs stable; adjacent dates are not overlapping; channel markups live-sync to Platform dropdown.
 -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Booking Adjustment Calculator (Standalone) — (v0.28)</title>
+  <title>Booking Adjustment Calculator (Standalone) — (v0.29)</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -317,6 +316,19 @@
     </div>
   </div>
 
+  <!-- Modal Root (Centered Pop-up) -->
+  <div id="modalRoot" class="fixed inset-0 hidden items-center justify-center z-50">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-[92%] max-w-md p-5">
+      <h3 id="modalTitle" class="text-lg font-semibold mb-2">Notice</h3>
+      <div id="modalMessage" class="text-sm text-gray-700 whitespace-pre-line"></div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="modalCancel" class="px-3 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 hidden">Cancel</button>
+        <button id="modalOk" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ---------- Helpers & Globals ----------
     const el = (id) => document.getElementById(id);
@@ -346,12 +358,33 @@
     // Strict overlap: adjacent [start,end) ranges are NOT overlapping
     const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 < b2) && (b1 < a2);
 
-    const GEL_PER_NIGHT_LABEL = "GEL (auto)";
-
     function currentChannel() {
       const [key, label, mu] = el("channel").value.split("|");
       return { key, label, markup: parseFloat(mu) || 0 };
     }
+
+    // Centered modal helpers
+    function showModal({ title = "Notice", message = "", okText = "OK", onOk = null, cancelText = null, onCancel = null } = {}) {
+      const root = el("modalRoot");
+      const t = el("modalTitle");
+      const m = el("modalMessage");
+      const ok = el("modalOk");
+      const cancel = el("modalCancel");
+      t.textContent = title;
+      m.innerHTML = String(message || "").replace(/\n/g, "<br>");
+      ok.textContent = okText || "OK";
+      cancel.textContent = cancelText || "";
+      cancel.classList.toggle("hidden", !cancelText);
+      const close = () => { root.classList.add("hidden"); document.removeEventListener("keydown", escListener); };
+      const escListener = (e) => { if (e.key === "Escape") close(); };
+      document.addEventListener("keydown", escListener);
+      ok.onclick = () => { close(); if (typeof onOk === "function") onOk(); };
+      cancel.onclick = () => { close(); if (typeof onCancel === "function") onCancel(); };
+      root.classList.remove("hidden");
+      // ensure flex centering
+      root.classList.add("flex");
+    }
+    function modalInfo(msg, title="Notice"){ showModal({ title, message: msg }); }
 
     // Scenario
     function detectScenario(os, oe, ns, ne, propOld, propNew) {
@@ -408,17 +441,56 @@
         inp.addEventListener("change", () => { sumNightly(); compute(false); });
       });
 
-      // One-time helper popup for nightly rates input
+      // One-time helper popup (centered)
       if (!shownRatesHelp && document.querySelectorAll('#nightlyGrid .nightRate').length) {
         shownRatesHelp = true;
-        alert(
+        modalInfo(
           'Enter the nightly rates for the NEW/ADDED nights.\n' +
-          'For Bachcare Direct Extensions: only the added nights are shown here.'
+          'For Bachcare Direct Extensions: only the added nights are shown here.',
+          'Nightly Rates Help'
         );
       }
     }
+<!-- Part 2 of 3 -->
+    function sumNightly() {
+      let sum = 0;
+      document.querySelectorAll("#nightlyGrid .nightRate").forEach((i) => sum += toCents(i.value));
+      el("rent2Sum").textContent = nzd(sum);
+      return sum;
+    }
 
-       // ---------- Compute ----------
+    function robustCopy(textareaId) {
+      const ta = el(textareaId);
+      ta.removeAttribute("readonly");
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) {}
+      ta.setAttribute("readonly", "");
+      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(ta.value).catch(() => {}); }
+      showModal({ title: "Copied", message: "Copied to clipboard.", okText: "OK" });
+    }
+
+    function listExtraNightDates(os, oe, ns, ne){
+      const out = [];
+      if(!ns || !ne) return out;
+      let cur = new Date(ns.getTime());
+      while(cur < ne){
+        if(!(os && oe && cur >= os && cur < oe)) out.push(dtIso(cur));
+        cur = new Date(cur.getTime()+DAY);
+      }
+      return out;
+    }
+    function sumRatesForDates(dateIsoArray){
+      let sum = 0;
+      dateIsoArray.forEach(iso=>{
+        const row = [...document.querySelectorAll("#nightlyGrid .grid")].find(r => (r.querySelector(".text-sm")?.textContent||"")===iso);
+        if(row){ const v = row.querySelector(".nightRate")?.value || "0"; sum += toCents(v); }
+      });
+      return sum;
+    }
+
+    // ---------- Compute ----------
     function compute(rebuildDates = true) {
       const os = getDateVal("origStart"), oe = getDateVal("origEnd");
       const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
@@ -446,14 +518,17 @@
       const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
       el("scenarioBadge").textContent = scen.label;
 
-      // Guidance alert for Direct + no overlap (one-time)
+      // Guidance popup for Direct + no overlap (centered modal)
       if (direct && os && oe && ns && ne) {
         const hasOverlap = overlaps(os, oe, ns, ne);
         if (!hasOverlap && !noOverlapAlerted) {
           noOverlapAlerted = true;
-          alert('Heads up: For Bachcare Direct when new dates do not overlap the original dates,\n' +
-                'you generally don’t need the calculator. Please create a new offline booking\n' +
-                'to get the correct total.');
+          modalInfo(
+            'For Bachcare Direct when new dates do not overlap the original dates,\n' +
+            'you generally don’t need the calculator. Create a new offline booking\n' +
+            'to get the correct total.',
+            'Heads up'
+          );
         }
       }
 
@@ -473,12 +548,12 @@
         addAmt: toCents(el("addAmt1").value)
       };
 
-      // NEW
+      // NEW base inputs
       const rent2 = sumNightly();
       const newNightsCount = (ns && ne) ? nightsBetween(ns, ne) : 0;
       const gel2 = newNightsCount * GEL_PER_NIGHT_C;
 
-      // Regular auto booking fee (non-extension cases)
+      // Regular auto booking fee (for NON-extension cases)
       const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
       const fee2 = Math.max(BOOKING_FEE_MIN_C, Math.min(fee2RawC, BOOKING_FEE_CAP_C));
 
@@ -504,31 +579,29 @@
         ? (b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C)
         : toCents(el("otaTotal1")?.value || 0);
 
-      let total2, addFeeC = 0, feeNewTotalC = b2.fee, extExtra = null;
+      let total2, addFeeC = 0, extExtra = null;
 
       if (isDirectExt && os && oe && ns && ne) {
-        // EXTENSION (DIRECT): compute additional booking fee (no min cap, no offsets)
+        // EXTENSION (DIRECT): Additional Booking Fee on ADDED nights ONLY (no min/max caps)
         const extraDates = listExtraNightDates(os, oe, ns, ne);
         const extraRentC = sumRatesForDates(extraDates);
         const extraGelC  = extraDates.length * GEL_PER_NIGHT_C;
         const extraGSTC  = Math.round(extraRentC * gstRate);
 
-        const feeBaseCombinedC = b1.rent + extraRentC + extraGelC;
-        const feeCombinedRawC  = Math.round(feeBaseCombinedC * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
-        feeNewTotalC = Math.max(BOOKING_FEE_MIN_C, Math.min(feeCombinedRawC, BOOKING_FEE_CAP_C));
-
-        addFeeC = Math.max(0, feeNewTotalC - b1.fee);
+        // New rule: ADDITIONAL FEE = (extraRent + extraGEL) × rate  (no min, no cap)
+        addFeeC = Math.round((extraRentC + extraGelC) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
 
         total2 = total1 + extraRentC + extraGelC + extraGSTC + addFeeC + amendTotalC;
 
-        extExtra = { extraDates, extraRentC, extraGelC, extraGSTC, addFeeC, feeNewTotalC };
+        extExtra = { extraDates, extraRentC, extraGelC, extraGSTC, addFeeC };
       } else {
+        // Non-extension path: regular new booking total
         total2 = b2.rent + ownerGST2C + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + amendTotalC;
       }
 
       const diff = total2 - total1;
 
-      // UI original
+      // UI: original
       el("obRent").textContent   = nzd(b1.rent);
       el("obLinen").textContent  = nzd(b1.linen);
       el("obClean").textContent  = nzd(b1.clean);
@@ -537,19 +610,19 @@
       el("obMarkup").textContent = nzd(markup1C);
       el("obOtaTotal").textContent = nzd(total1);
 
-      // Fee label tweaks
+      // UI: fee labels (switch to Additional Booking Fee for Direct Extension)
       const fee2LabelWrap = el('fee2')?.closest('label');
       const fee2TitleSpan = fee2LabelWrap?.querySelector('span');
       const nbFeeRowLabel = el('nbFee')?.previousElementSibling;
       if (isDirectExt) {
-        if (fee2TitleSpan) fee2TitleSpan.textContent = "Additional Booking Fee (auto, no min cap)";
+        if (fee2TitleSpan) fee2TitleSpan.textContent = "Additional Booking Fee (auto, no min cap; ext. nights only)";
         if (nbFeeRowLabel) nbFeeRowLabel.textContent = "Additional Booking Fee";
       } else {
         if (fee2TitleSpan) fee2TitleSpan.textContent = "Booking Fee (auto, min $40 cap $299)";
         if (nbFeeRowLabel) nbFeeRowLabel.textContent = "Booking Fee (auto)";
       }
 
-      // UI new
+      // UI: new booking figures
       el("nbRent").textContent   = nzd(b2.rent);
       el("ownerGST2").textContent = nzd(ownerGST2C);
       el("nbLinen").textContent  = nzd(b2.linen);
@@ -570,7 +643,7 @@
 
       toggleOriginalUI(direct);
 
-      // Breakdown + outcome
+      // Breakdown HTML
       const origDatesLine = (os && oe) ? `Check-in: ${dtNZ(os)} &nbsp;|&nbsp; Check-out: ${dtNZ(oe)} &nbsp;|&nbsp; Nights: ${nightsBetween(os,oe)}<br>` : "";
       const newDatesLine  = (ns && ne) ? `Check-in: ${dtNZ(ns)} &nbsp;|&nbsp; Check-out: ${dtNZ(ne)} &nbsp;|&nbsp; Nights: ${nightsBetween(ns,ne)}<br>` : "";
       const header =
@@ -596,7 +669,7 @@
           `Added Rent (extra night[s]): ${nzd(extExtra.extraRentC)}<br>` +
           `Added GEL: ${nzd(extExtra.extraGelC)}<br>` +
           `GST on Added Rent (auto): ${nzd(extExtra.extraGSTC)}<br>` +
-          `Additional Booking Fee: ${nzd(extExtra.addFeeC)} (new total fee after extension: ${nzd(extExtra.feeNewTotalC)})<br>` +
+          `Additional Booking Fee: ${nzd(extExtra.addFeeC)}<br>` +
           (direct ? (amendTotalC>0?`Amendment Fee: ${nzd(amendTotalC)}<br>`:`Amendment Fee: Waived<br>`) : `Amendment Fee: N/A<br>`) +
           `Total: ${nzd(total2)}<br><br>`;
       } else {
@@ -636,7 +709,7 @@
           const extraDatesHuman = extExtra.extraDates && extExtra.extraDates.length
             ? extExtra.extraDates.map(s=> dtNZ(new Date(s))).join(", ")
             : "-";
-          const originalRentBundledC = b1.rent;
+          const originalRentBundledC = b1.rent; // includes GST & GEL
           const extraRentBundledC = extExtra.extraRentC + extExtra.extraGSTC + extExtra.extraGelC;
 
           el("guestEmail").value =
@@ -707,53 +780,11 @@ Bachcare Team`;
         el("guestEmail").value = "";
       }
 
-      // Reflect fee box value
+      // Reflect fee input box
       el("fee2").value = (isDirectExt ? (extExtra?.addFeeC||0) : b2.fee) / 100;
       el("fee2").value = Number(el("fee2").value).toFixed(2);
     }
-
-    function sumNightly() {
-      let sum = 0;
-      document.querySelectorAll("#nightlyGrid .nightRate").forEach((i) => sum += toCents(i.value));
-      el("rent2Sum").textContent = nzd(sum);
-      return sum;
-    }
-
-    function robustCopy(textareaId) {
-      const ta = el(textareaId);
-      ta.removeAttribute("readonly");
-      ta.select();
-      ta.setSelectionRange(0, 99999);
-      let ok = false;
-      try { ok = document.execCommand("copy"); } catch (_) {}
-      ta.setAttribute("readonly", "");
-      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(ta.value).catch(() => {}); }
-      alert("Copied to clipboard.");
-    }
-
-    function listExtraNightDates(os, oe, ns, ne){
-      const out = [];
-      if(!ns || !ne) return out;
-      let cur = new Date(ns.getTime());
-      while(cur < ne){
-        if(!(os && oe && cur >= os && cur < oe)) out.push(dtIso(cur));
-        cur = new Date(cur.getTime()+DAY);
-      }
-      return out;
-    }
-    function sumRatesForDates(dateIsoArray){
-      let sum = 0;
-      dateIsoArray.forEach(iso=>{
-        const row = [...document.querySelectorAll("#nightlyGrid .grid")].find(r => (r.querySelector(".text-sm")?.textContent||"")===iso);
-        if(row){ const v = row.querySelector(".nightRate")?.value || "0"; sum += toCents(v); }
-      });
-      return sum;
-    }
-
-    // ---------- Compute ----------
-    /* Full compute() function included with v0.28 changes */
-    /* ... already provided in previous answer ... */
-
+<!-- Part 3 of 3 -->
     // ---------- Toggle UI ----------
     function setInputsDisabled(containerId, disabled){
       const cont = el(containerId);
@@ -849,19 +880,31 @@ Bachcare Team`;
       compute(false);
     }
     function saveSessionNamed(name){
-      if(!name){ alert("Please enter a session name."); return; }
+      if(!name){ showModal({ title: "Save Session", message: "Please enter a session name." }); return; }
       const all = readSessions(); all[name]=collectFormData();
       localStorage.setItem(SESS_KEY, JSON.stringify(all)); refreshSessionPicker();
-      alert(`Saved session: ${name}`); el("sessionName").value = name; el("sessionPicker").value = name;
+      showModal({ title: "Saved", message: `Saved session: ${name}` });
+      el("sessionName").value = name; el("sessionPicker").value = name;
     }
     function loadSessionNamed(name){
-      const all = readSessions(); if(!name || !all[name]){ alert("Choose a saved session to load."); return; }
-      applyFormData(all[name]); alert(`Loaded session: ${name}`);
+      const all = readSessions(); if(!name || !all[name]){ showModal({ title:"Load Session", message:"Choose a saved session to load."}); return; }
+      applyFormData(all[name]); showModal({ title:"Loaded", message:`Loaded session: ${name}` });
     }
     function deleteSessionNamed(name){
-      const all = readSessions(); if(!name || !all[name]){ alert("Choose a saved session to delete."); return; }
-      if(!confirm(`Delete saved session "${name}"?`)) return;
-      delete all[name]; localStorage.setItem(SESS_KEY, JSON.stringify(all)); refreshSessionPicker(); alert(`Deleted session: ${name}`);
+      const all = readSessions(); if(!name || !all[name]){ showModal({ title:"Delete Session", message:"Choose a saved session to delete."}); return; }
+      // simple confirm using modal
+      showModal({
+        title: "Confirm Delete",
+        message: `Delete saved session "${name}"?`,
+        okText: "Delete",
+        onOk: () => {
+          delete all[name];
+          localStorage.setItem(SESS_KEY, JSON.stringify(all));
+          refreshSessionPicker();
+          showModal({ title: "Deleted", message: `Deleted session: ${name}` });
+        },
+        cancelText: "Cancel"
+      });
     }
 
     // ---------- Channel Markup Sync ----------
@@ -892,14 +935,15 @@ Bachcare Team`;
         });
         document.getElementById(target).classList.remove('hidden');
 
-        // Settings helper popup
+        // Settings helper popup (centered)
         if (target === 'settingsPane' && !shownSettingsHelp) {
           shownSettingsHelp = true;
-          alert(
+          modalInfo(
             'Settings are primarily for Bachcare Direct bookings.\n' +
             '- GST rate applies to NEW booking rent only.\n' +
             '- Booking Fee rate computes automatically.\n' +
-            '- Amendment fee is charged per amendment (no offsets).'
+            '- Amendment fee is charged per amendment (no offsets).',
+            'Settings Help'
           );
         }
       });
@@ -933,6 +977,7 @@ Bachcare Team`;
         document.getElementById("rent2Sum").textContent = nzd(0);
         lastNewStart = ""; lastNewEnd = "";
         noOverlapAlerted = false;
+        shownRatesHelp = false;
         compute(true);
       });
 
