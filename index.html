@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- Bachcare Calculator — Base Working Version (v0.27) -->
-<!-- v0.27: Restored OTA/Direct pop-ups; “GST on Rent (auto)” in breakdown; New Property ID auto-fills from Original; label updated; all latest features retained. -->
+<!-- v0.27: Reinstated platform pop-ups; "GST on Rent (auto)" label; New Property ID auto-fills from Original (with guidance); preserved Direct extension-only nights; OTA amendment disabled; default New Created On = today; kept Direct non-overlap modal. -->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -28,6 +28,10 @@
     .required:after{content:" *"; color:#dc2626; font-weight:600}
     #previewCOD{max-height:20rem;overflow:auto}
     @media (min-width:1024px){ #htmlCOD{height:20rem} }
+
+    /* Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal{max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)}
   </style>
 </head>
 <body class="bg-gray-50">
@@ -116,7 +120,7 @@
 
             <div id="obBreakdown" class="space-y-1 text-sm">
               <div class="row"><span class="text-gray-600">Rent</span><span id="obRent">$0.00</span></div>
-              <!-- GST row removed for original booking -->
+              <!-- No GST row for original booking -->
               <div class="row"><span class="text-gray-600">Linen</span><span id="obLinen">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Cleaning</span><span id="obClean">$0.00</span></div>
               <div class="row"><span class="text-gray-600">Booking Fee</span><span id="obFee">$0.00</span></div>
@@ -149,8 +153,9 @@
             </div>
             <div class="row mt-2"><span class="text-gray-600"># Nights</span><span id="newNights">0</span></div>
 
-            <label class="block mt-3"><span class="text-sm font-medium text-gray-700">New Property ID <span class="mini">(Adjust if new property ID or leave as is)</span></span>
-              <input type="text" id="propIdNew" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="auto from Original Property ID">
+            <label class="block mt-3">
+              <span class="text-sm font-medium text-gray-700">New Property ID <span class="text-gray-500">(Adjust if new property ID or leave as is)</span></span>
+              <input type="text" id="propIdNew" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2" placeholder="e.g. 532112">
             </label>
 
             <!-- Daily Modifier Rates -->
@@ -192,9 +197,7 @@
               <label class="block"><span class="text-sm font-medium text-gray-700">Amendment Count</span>
                 <input type="number" min="0" step="1" id="amendCount2" value="0" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2">
               </label>
-              <div class="mini text-gray-600">
-                Per-fee value is set in <b>Settings</b> <span class="text-gray-400">(Direct only)</span>.
-              </div>
+              <div class="mini text-gray-600">Per-fee value is set in <b>Settings</b> <span class="text-gray-400">(Direct only)</span>.</div>
             </div>
 
             <div class="border-t border-gray-100 my-2"></div>
@@ -212,6 +215,7 @@
 
             <div class="row mt-2"><span class="text-gray-600">New Booking Total</span><span id="total2" class="font-semibold">$0.00</span></div>
           </section>
+
           <!-- Outcome + Notes + Email -->
           <div class="lg:col-span-2">
             <div class="mt-6 card">
@@ -220,24 +224,11 @@
                 <div>Scenario: <span id="scenarioBadge" class="badge">—</span></div>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                <div class="tile">
-                  <div class="text-sm text-gray-600">Original Total</div>
-                  <div id="tile1" class="text-2xl font-semibold">—</div>
-                  <div class="text-xs text-gray-500">Original booking charges.</div>
-                </div>
-                <div class="tile">
-                  <div class="text-sm text-gray-600">New Total</div>
-                  <div id="tile2" class="text-2xl font-semibold">—</div>
-                  <div class="text-xs text-gray-500">New booking charges.</div>
-                </div>
-                <div class="tile">
-                  <div class="text-sm text-gray-600" id="tile3label">Amount to charge/refund guest</div>
-                  <div id="tile3" class="text-2xl font-semibold">—</div>
-                  <div class="text-xs text-gray-500" id="tile3desc">Based on totals above</div>
-                </div>
+                <div class="tile"><div class="text-sm text-gray-600">Original Total</div><div id="tile1" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">Original booking charges.</div></div>
+                <div class="tile"><div class="text-sm text-gray-600">New Total</div><div id="tile2" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500">New booking charges.</div></div>
+                <div class="tile"><div class="text-sm text-gray-600" id="tile3label">Amount to charge/refund guest</div><div id="tile3" class="text-2xl font-semibold">—</div><div class="text-xs text-gray-500" id="tile3desc">Based on totals above</div></div>
               </div>
 
-              <!-- Notes + Preview side-by-side -->
               <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <section class="card">
                   <h2 class="text-lg font-semibold mb-2">Finance Breakdown Itinerary Note</h2>
@@ -250,7 +241,6 @@
                 </section>
               </div>
 
-              <!-- Guest Email (Direct only) -->
               <div class="mt-4 grid grid-cols-1">
                 <section id="guestEmailCard" class="card hidden-soft">
                   <h2 class="text-xl font-semibold mb-3">Guest Email (Direct bookings)</h2>
@@ -263,41 +253,28 @@
           </div>
         </div>
 
-        <p class="text-xs text-gray-500 mt-5">
-          Tip: Enter numbers only (e.g. 120 or 120.50). Currency shown in NZD. Dates accept dd/mm/yyyy or yyyy-mm-dd.
-        </p>
+        <p class="text-xs text-gray-500 mt-5">Tip: Enter numbers only (e.g. 120 or 120.50). Currency shown in NZD. Dates accept dd/mm/yyyy or yyyy-mm-dd.</p>
       </div>
 
       <!-- Settings -->
       <div id="settingsPane" class="p-4 hidden">
         <section class="card mb-4">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-sm font-semibold">GST Rate (on rent)</span>
-          </div>
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">GST Rate (on new rent)</span></div>
           <input type="text" id="ownerGSTRate" value="0.15" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
-          <div class="mini">Applies to new booking rent (auto).</div>
+          <div class="mini">Applied automatically to new booking rent.</div>
         </section>
-
         <section class="card mb-4">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-sm font-semibold">Booking Fee Rate</span>
-          </div>
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Booking Fee Rate</span></div>
           <input type="text" id="bookingFeeRate" value="0.071" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
           <div class="mini">Fee = (Rent + GEL) × rate, min $40, max $299.</div>
         </section>
-
         <section class="card mb-4">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-sm font-semibold">Amendment Fee (each)</span>
-          </div>
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Amendment Fee (each)</span></div>
           <input type="text" id="amendFeeEach" value="28.75" class="mt-1 w-40 rounded-xl border border-gray-300 bg-white px-3 py-2">
           <div class="mini">Direct only.</div>
         </section>
-
         <section class="card">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-sm font-semibold">Channel Markups</span>
-          </div>
+          <div class="flex items-center gap-2 mb-1"><span class="text-sm font-semibold">Channel Markups</span></div>
           <div class="grid grid-cols-3 gap-2">
             <label class="text-sm">Airbnb %<input type="text" id="mkAirbnb" value="25.5" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
             <label class="text-sm">Booking.com %<input type="text" id="mkBcom" value="23.9" class="mt-1 w-full rounded-xl border border-gray-300 bg-white px-2 py-1"></label>
@@ -334,9 +311,9 @@
     </div>
   </div>
 
-  <!-- Modal: Bachcare Direct non-overlap -->
-  <div id="directModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc" style="position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50">
-    <div class="modal" style="max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)">
+  <!-- Modal for Bachcare Direct non-overlap -->
+  <div id="directModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc">
+    <div class="modal">
       <div class="p-6">
         <div class="flex items-start gap-3">
           <div class="shrink-0 rounded-full bg-red-50 border border-red-200 p-2 mt-1">
@@ -360,155 +337,360 @@
     </div>
   </div>
 
-  <!-- Modal: OTA extension during active stay (Airbnb/Booking.com) -->
-  <div id="otaActiveExtModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="otaext-title" aria-describedby="otaext-desc" style="position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50">
-    <div class="modal" style="max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)">
-      <div class="p-6">
-        <h3 id="otaext-title" class="text-xl font-semibold text-gray-900">Process extension by phone</h3>
-        <p id="otaext-desc" class="mt-2 text-gray-700">
-          The extension is being requested while the booking is active. <b>Airbnb/Booking.com</b> portals won’t allow last‑minute changes. 
-          Please <b>take payment by phone</b> and raise a <b>workflow to Finance</b> explaining the partial phone payment vs portal.
-        </p>
-        <div class="mt-6 flex justify-end gap-2">
-          <button id="otaExtOk" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: OTA date change instruction (Airbnb/Booking.com) -->
-  <div id="otaDateChangeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="otadc-title" aria-describedby="otadc-desc" style="position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50">
-    <div class="modal" style="max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)">
-      <div class="p-6">
-        <h3 id="otadc-title" class="text-xl font-semibold text-gray-900">Have guest request change in portal</h3>
-        <p id="otadc-desc" class="mt-2 text-gray-700">
-          For <b>Airbnb/Booking.com</b> date changes or reductions, ask the guest to submit the request in their portal. 
-          Accept it on our side so their system calculates the correct amount. Then mirror it in Enterprise and <b>copy the portal breakdown</b> into the itinerary notes. 
-          Raise a <b>workflow to Finance</b> to adjust the Enterprise breakdown.
-        </p>
-        <div class="mt-6 flex justify-end gap-2">
-          <button id="otaDateOk" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Booking.com within 7 days approval -->
-  <div id="bcomWindowModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="bcom-title" aria-describedby="bcom-desc" style="position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50">
-    <div class="modal" style="max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)">
-      <div class="p-6">
-        <h3 id="bcom-title" class="text-xl font-semibold text-gray-900">Team Leader approval required</h3>
-        <p id="bcom-desc" class="mt-2 text-gray-700">
-          This <b>Booking.com</b> change is within <b>7 days</b> of check‑in and outside the free cancellation period. 
-          Please seek <b>Team Leader approval</b> before proceeding.
-        </p>
-        <div class="mt-6 flex justify-end gap-2">
-          <button id="bcomOk" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Airbnb within 30 days approval -->
-  <div id="airbnbWindowModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="abnb-title" aria-describedby="abnb-desc" style="position:fixed;inset:0;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50">
-    <div class="modal" style="max-width:42rem;width:100%;background:#fff;border-radius:1rem;border:1px solid #e2e8f0;box-shadow:0 20px 40px rgba(0,0,0,.2)">
-      <div class="p-6">
-        <h3 id="abnb-title" class="text-xl font-semibold text-gray-900">Team Leader approval required</h3>
-        <p id="abnb-desc" class="mt-2 text-gray-700">
-          This <b>Airbnb</b> change is within <b>30 days</b> of check‑in and outside the free cancellation period. 
-          Please seek <b>Team Leader approval</b> before proceeding.
-        </p>
-        <div class="mt-6 flex justify-end gap-2">
-          <button id="airbnbOk" class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- JS Logic -->
   <script>
+    // ---------- Helpers ----------
     const el = (id) => document.getElementById(id);
+    const toCents = (v) => { const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(/[^0-9.-]/g, "")); if (Number.isNaN(n)) return 0; return Math.round(n * 100); };
+    const nzd = (c) => new Intl.NumberFormat("en-NZ", { style: "currency", currency: "NZD" }).format((c || 0) / 100);
     const DAY = 86400000;
-    const toCents = (v) => {
-      const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(/[^0-9.-]/g, ""));
-      return Number.isNaN(n) ? 0 : Math.round(n * 100);
-    };
-    const nzd = (c) => new Intl.NumberFormat("en-NZ",{style:"currency",currency:"NZD"}).format((c||0)/100);
-    function getDateVal(id){
-      const v=(el(id)?.value||"").trim(); if(!v) return null;
-      if(/^\d{4}-\d{2}-\d{2}$/.test(v)){const [y,m,d]=v.split("-").map(Number);return new Date(Date.UTC(y,m-1,d));}
-      if(/^\d{2}\/\d{2}\/\d{4}$/.test(v)){const [d,m,y]=v.split("/").map(Number);return new Date(Date.UTC(y,m-1,d));}
-      const tryD=new Date(v); return isNaN(tryD)?null:new Date(Date.UTC(tryD.getUTCFullYear(),tryD.getUTCMonth(),tryD.getUTCDate()));
-    }
-    const dtIso=(d)=>d.toISOString().slice(0,10);
-    const dtNZ=(d)=>!d?"":d.toLocaleDateString("en-NZ",{day:"2-digit",month:"2-digit",year:"numeric"});
-    const nightsBetween=(a,b)=>Math.max(0,Math.round((b-a)/DAY));
-    const overlaps=(a1,a2,b1,b2)=>a1&&a2&&b1&&b2&&(a1<=b2)&&(b1<=a2);
 
-    // restore channel markup sync
-    function syncMarkupsToDropdown(){
-      const air=parseFloat(el('mkAirbnb').value||'0')/100;
-      const bc=parseFloat(el('mkBcom').value||'0')/100;
-      const vr=parseFloat(el('mkVrbo').value||'0')/100;
-      [...el('channel').options].forEach(opt=>{
-        if(opt.value.startsWith('airbnb|')) opt.value=`airbnb|Airbnb|${air}`;
-        if(opt.value.startsWith('bcom|')) opt.value=`bcom|Booking.com|${bc}`;
-        if(opt.value.startsWith('vrbo|')) opt.value=`vrbo|VRBO|${vr}`;
+    const GEL_PER_NIGHT_C = 1200;
+    const BOOKING_FEE_CAP_C = 29900;
+    const BOOKING_FEE_MIN_C = 4000;
+
+    // date utils
+    function getDateVal(id) {
+      const v = (el(id)?.value || "").trim();
+      if (!v) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [y, m, d] = v.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d, m, y] = v.split("/").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+      const tryD = new Date(v); return isNaN(tryD) ? null : new Date(Date.UTC(tryD.getUTCFullYear(), tryD.getUTCMonth(), tryD.getUTCDate()));
+    }
+    const dtIso = (d) => d?.toISOString().slice(0, 10);
+    function dtNZ(d){ if(!(d instanceof Date) || isNaN(d)) return ""; const dd=String(d.getUTCDate()).padStart(2,'0'); const mm=String(d.getUTCMonth()+1).padStart(2,'0'); const yy=d.getUTCFullYear(); return `${dd}/${mm}/${yy}`; }
+    const nightsBetween = (a, b) => Math.max(0, Math.round((b - a) / DAY));
+    const overlaps = (a1, a2, b1, b2) => a1 && a2 && b1 && b2 && (a1 <= b2) && (b1 <= a2);
+
+    // state
+    let lastNewStart = "", lastNewEnd = "";
+    let propIdNewTouched = false;
+    const shownPopups = new Set(); // throttle duplicate popups
+    let lastDirectModalKey = "";
+
+    function currentChannel() {
+      const [key, label, mu] = el("channel").value.split("|");
+      return { key, label, markup: parseFloat(mu) || 0 };
+    }
+
+    // Scenario
+    function detectScenario(os, oe, ns, ne, propOld, propNew) {
+      const hasBothProps = (propOld && propNew);
+      if (hasBothProps && propOld !== propNew) return { key: 'rehouse', label: 'Rehouse' };
+      const overlap = overlaps(os, oe, ns, ne);
+      const origN = (os && oe) ? nightsBetween(os, oe) : 0;
+      const newN  = (ns && ne) ? nightsBetween(ns, ne) : 0;
+      if (overlap && newN > origN) return { key: 'extension', label: 'Extension' };
+      if (overlap && newN < origN) return { key: 'ron', label: 'Reduction of Nights' };
+      return { key: 'change', label: 'Change of Date' };
+    }
+
+    // Nightly inputs (only added nights for Direct Extension)
+    function buildNightlyInputs() {
+      const s = getDateVal("newStart"), e = getDateVal("newEnd");
+      const os = getDateVal("origStart"), oe = getDateVal("origEnd");
+      const ch = currentChannel();
+      const scen = detectScenario(os, oe, s, e, (el("propIdOld")?.value||"").trim(), (el("propIdNew")?.value||"").trim());
+      const direct = ch.key === 'direct';
+      const isDirectExt = direct && scen.key === 'extension';
+
+      const grid = el("nightlyGrid");
+      grid.innerHTML = "";
+      el("rent2Sum").textContent = nzd(0);
+      el("addedNightsNotice")?.classList.toggle("hidden-soft", !isDirectExt);
+
+      if (!s || !e || e <= s) return;
+
+      let dates = [];
+      if (isDirectExt && os && oe) {
+        let cur = new Date(s.getTime());
+        while (cur < e) { if (!(cur >= os && cur < oe)) dates.push(new Date(cur.getTime())); cur = new Date(cur.getTime() + DAY); }
+      } else {
+        let cur = new Date(s.getTime());
+        while (cur < e) { dates.push(new Date(cur.getTime())); cur = new Date(cur.getTime() + DAY); }
+      }
+
+      let idx = 0;
+      dates.forEach(cur=>{
+        const row = document.createElement("div");
+        row.className = "grid grid-cols-7 gap-2 items-center";
+        row.innerHTML = `
+          <div class="col-span-3 text-sm">${dtIso(cur)}</div>
+          <div class="col-span-2"><input type="number" step="0.01" inputmode="decimal"
+               class="nightRate mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-1"
+               placeholder="Nightly rate"></div>
+          <div class="col-span-2 mini">Night ${++idx}</div>`;
+        grid.appendChild(row);
+      });
+
+      grid.querySelectorAll(".nightRate").forEach((inp) => {
+        inp.addEventListener("input", () => { sumNightly(); compute(false); });
+        inp.addEventListener("change", () => { sumNightly(); compute(false); });
       });
     }
-    function currentChannel(){const [k,l,m]=el("channel").value.split("|");return {key:k,label:l,markup:parseFloat(m)||0};}
 
-    // scenario detect
-    function detectScenario(os,oe,ns,ne,propOld,propNew){
-      if(propOld&&propNew&&propOld!==propNew)return{key:"rehouse",label:"Rehouse"};
-      const origN=os&&oe?nightsBetween(os,oe):0; const newN=ns&&ne?nightsBetween(ns,ne):0;
-      const overlap=overlaps(os,oe,ns,ne);
-      if(overlap&&newN>origN) return{key:"extension",label:"Extension"};
-      if(overlap&&newN<origN) return{key:"ron",label:"Reduction of Nights"};
-      return{key:"change",label:"Change of Date"};
+    function sumNightly() {
+      let sum = 0;
+      document.querySelectorAll("#nightlyGrid .nightRate").forEach((i) => sum += toCents(i.value));
+      el("rent2Sum").textContent = nzd(sum);
+      return sum;
     }
 
-    // compute (simplified snippet showing gst(auto) etc.)
-    function compute(){
-      const os=getDateVal("origStart"),oe=getDateVal("origEnd"),ns=getDateVal("newStart"),ne=getDateVal("newEnd");
-      const origN=os&&oe?nightsBetween(os,oe):0; const newN=ns&&ne?nightsBetween(ns,ne):0;
-      el("origNights").textContent=origN; el("newNights").textContent=newN;
-      // auto populate new property id
-      if(el("propIdOld").value && !el("propIdNew").value){el("propIdNew").value=el("propIdOld").value;}
-      const ch=currentChannel(); const scen=detectScenario(os,oe,ns,ne,el("propIdOld").value,el("propIdNew").value);
-      el("scenarioBadge").textContent=scen.label;
-      // ... many calculations (rent, gst, fees, amendment, totals, etc.)
-      // in breakdown label GST as (auto)
-      el("ownerGST2").textContent="(auto)"; // stub, real calc earlier
-      // fill itinerary and email with dtNZ dates
+    function robustCopy(textareaId) {
+      const ta = el(textareaId);
+      ta.removeAttribute("readonly");
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) {}
+      ta.setAttribute("readonly", "");
+      if (!ok && navigator.clipboard) { navigator.clipboard.writeText(ta.value).catch(() => {}); }
+      alert("Copied to clipboard.");
     }
 
-    // tab switching
-    document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
-      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-      b.classList.add("active");
-      ["calcPane","settingsPane","sessionsPane"].forEach(id=>el(id).classList.add("hidden"));
-      el(b.dataset.tab).classList.remove("hidden");
-    }));
-
-    // modals reopen logic
-    function showModal(id){el(id).classList.remove("hidden");}
-    ["dmClose","otaExtOk","otaDateOk","bcomOk","airbnbOk"].forEach(i=>{const n=el(i);if(n)n.onclick=()=>n.closest(".modal-overlay").classList.add("hidden");});
-
-    // init
-    (function init(){
-      syncMarkupsToDropdown();
-      // default newCreatedAt today
-      const today=new Date(); el("newCreatedAt").value=dtNZ(today);
-      // recalc on inputs
-      ["channel","rent1","linen1","clean1","fee1","addAmt1","addInfo1","propIdOld","propIdNew",
-       "linen2","clean2","addAmt2","addInfo2","amendCount2"].forEach(id=>{
-        const n=el(id); if(n) n.addEventListener("input",()=>compute());
+    // Extra night helpers
+    function listExtraNightDates(os, oe, ns, ne){
+      const out = [];
+      if(!ns || !ne) return out;
+      let cur = new Date(ns.getTime());
+      while(cur < ne){
+        if(!(os && oe && cur >= os && cur < oe)) out.push(dtIso(cur));
+        cur = new Date(cur.getTime()+DAY);
+      }
+      return out;
+    }
+    function sumRatesForDates(dateIsoArray){
+      let sum = 0;
+      dateIsoArray.forEach(iso=>{
+        const row = [...document.querySelectorAll("#nightlyGrid .grid")].find(r => (r.querySelector(".text-sm")?.textContent||"")===iso);
+        if(row){ const v = row.querySelector(".nightRate")?.value || "0"; sum += toCents(v); }
       });
-      ["origStart","origEnd","newStart","newEnd"].forEach(id=>{
-        const n=el(id); if(n) n.addEventListener("change",()=>compute());
+      return sum;
+    }
+
+    // ---------- Policy & workflow pop-ups ----------
+    function maybeShowDirectModal(chKey, os, oe, ns, ne) {
+      const modal = el('directModal');
+      if (!modal) return;
+      if (!os || !oe || !ns || !ne) return;
+      const noOverlap = !(overlaps(os, oe, ns, ne));
+      const key = `directModal|${chKey}|${os?.toISOString()}|${oe?.toISOString()}|${ns?.toISOString()}|${ne?.toISOString()}`;
+      if (chKey === 'direct' && noOverlap && lastDirectModalKey !== key) {
+        lastDirectModalKey = key;
+        modal.classList.remove('hidden');
+        setTimeout(()=> el('dmClose')?.focus(), 0);
+      }
+    }
+
+    function nzTodayUTC(){
+      const now = new Date();
+      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    }
+
+    function daysUntil(date){
+      if(!(date instanceof Date)) return null;
+      const t = nzTodayUTC();
+      return Math.round((date - t)/DAY);
+    }
+
+    function policyPopups(ch, scen, os, oe){
+      if(!os || !oe) return;
+
+      const keyBase = `${ch.key}|${scen.key}|${os?.toISOString()}|${oe?.toISOString()}`;
+      const today = nzTodayUTC();
+      const withinStay = (today >= os && today < oe);
+      const dToStart = daysUntil(os);
+
+      // DIRECT: change/reduction inside 30 days -> approval (extensions exempt)
+      if (ch.key === 'direct' && (scen.key === 'change' || scen.key === 'ron')) {
+        if (dToStart !== null && dToStart < 30) {
+          const k = `direct30|${keyBase}`;
+          if(!shownPopups.has(k)){
+            shownPopups.add(k);
+            alert("Direct booking: This change is within 30 days of check-in.\nPlease seek Team Leader approval before proceeding.\nIf this is ONLY an extension, you may disregard and continue.");
+          }
+        }
+      }
+
+      // OTA: Extension allowed anytime; if during active stay (Airbnb/B.com/VRBO) -> phone payment
+      if ((ch.key === 'airbnb' || ch.key === 'bcom' || ch.key === 'vrbo') && scen.key === 'extension' && withinStay) {
+        const k = `otaExtPhone|${keyBase}`;
+        if(!shownPopups.has(k)){
+          shownPopups.add(k);
+          alert("Extension during active stay:\nProcess payment over the phone (portal won't allow last-minute change).\nCreate a workflow to Finance to explain partial phone payment vs portal.");
+        }
+      }
+
+      // OTA: Airbnb & Booking.com date-change or RON must be requested via portal
+      if ((ch.key === 'airbnb' || ch.key === 'bcom') && (scen.key === 'change' || scen.key === 'ron')) {
+        const k = `otaPortal|${keyBase}`;
+        if(!shownPopups.has(k)){
+          shownPopups.add(k);
+          alert("For Airbnb/Booking.com date changes or reductions:\nAsk the guest to request the change in the portal. Accept it in our end to let their system calculate the correct amount.\nThen mirror the change in Enterprise and paste the portal breakdown into itinerary notes.\nWorkflow to Finance to adjust Enterprise breakdown.");
+        }
+      }
+
+      // Booking.com: change/RON within 7 days -> TL approval
+      if (ch.key === 'bcom' && (scen.key === 'change' || scen.key === 'ron')) {
+        if (dToStart !== null && dToStart < 7) {
+          const k = `bcom7|${keyBase}`;
+          if(!shownPopups.has(k)){
+            shownPopups.add(k);
+            alert("Booking.com: This change is within 7 days of check-in (outside free cancellation).\nPlease seek Team Leader approval before proceeding.");
+          }
+        }
+      }
+
+      // Airbnb: change/RON within 30 days -> TL approval
+      if (ch.key === 'airbnb' && (scen.key === 'change' || scen.key === 'ron')) {
+        if (dToStart !== null && dToStart < 30) {
+          const k = `airbnb30|${keyBase}`;
+          if(!shownPopups.has(k)){
+            shownPopups.add(k);
+            alert("Airbnb: This change is within 30 days of check-in (outside free cancellation).\nPlease seek Team Leader approval before proceeding.");
+          }
+        }
+      }
+    }
+
+    // ---------- Main compute ----------
+    function compute(rebuildDates = true) {
+      const os = getDateVal("origStart"), oe = getDateVal("origEnd");
+      const ns = getDateVal("newStart"), ne = getDateVal("newEnd");
+      el("origNights").textContent = (os&&oe)?nightsBetween(os,oe):0;
+      el("newNights").textContent  = (ns&&ne)?nightsBetween(ns,ne):0;
+
+      if (rebuildDates) {
+        const nsStr = el("newStart").value || "";
+        const neStr = el("newEnd").value || "";
+        if (nsStr !== lastNewStart || neStr !== lastNewEnd) {
+          buildNightlyInputs();
+          lastNewStart = nsStr; lastNewEnd = neStr;
+        }
+      }
+
+      const ch = currentChannel();
+      const direct = ch.key === 'direct';
+      const gstRate = parseFloat(el("ownerGSTRate")?.value || "0.15");
+      const bookingFeeRate = parseFloat(el("bookingFeeRate")?.value || "0.071");
+      const amendFeeEachC = toCents(el("amendFeeEach")?.value || "28.75");
+      const amendCountInput = el("amendCount2");
+      const amendCount = parseInt(amendCountInput?.value || "0", 10) || 0;
+
+      // Amendment input disabled for OTA
+      if (amendCountInput) {
+        const disableAmend = !direct;
+        amendCountInput.disabled = disableAmend;
+        amendCountInput.classList.toggle('disabled-soft', disableAmend);
+      }
+
+      const propOld = (el("propIdOld")?.value || "").trim();
+      const propNew = (el("propIdNew")?.value || "").trim();
+      const scen = detectScenario(os, oe, ns, ne, propOld, propNew);
+      el("scenarioBadge").textContent = scen.label;
+
+      // Grey out Linen/Cleaning for direct extension
+      const isDirectExt = direct && scen.key === 'extension';
+      ["linen2","clean2"].forEach(id=>{
+        const node = el(id);
+        if(node){ node.disabled = isDirectExt; node.classList.toggle('disabled-soft', isDirectExt); }
       });
-      compute();
-    })();
-  </script>
-</body>
-</html>
+
+      // ORIGINAL (Direct): rent already includes GST & GEL; do NOT calculate GST
+      const b1 = {
+        rent: toCents(el("rent1").value),
+        linen: toCents(el("linen1").value),
+        clean: toCents(el("clean1").value),
+        fee: toCents(el("fee1").value),
+        addInfo: (el("addInfo1").value || "").trim(),
+        addAmt: toCents(el("addAmt1").value)
+      };
+
+      // NEW
+      const rent2 = sumNightly();
+      const newNightsCount = (ns && ne) ? nightsBetween(ns, ne) : 0;
+      const gel2 = newNightsCount * GEL_PER_NIGHT_C;
+
+      const fee2RawC = Math.round((rent2 + gel2) * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
+      const fee2 = Math.max(BOOKING_FEE_MIN_C, Math.min(fee2RawC, BOOKING_FEE_CAP_C));
+
+      const b2 = {
+        rent: rent2,
+        linen: toCents(el("linen2").value),
+        clean: toCents(el("clean2").value),
+        fee: fee2,
+        addInfo: (el("addInfo2").value || "").trim(),
+        addAmt: toCents(el("addAmt2").value)
+      };
+
+      // Markups
+      const ownerGST2C = Math.round(b2.rent * gstRate);
+      const markup1C = Math.round((b1.rent + b1.fee) * ch.markup);
+      const markup2C = Math.round((b2.rent + ownerGST2C + b2.fee + gel2) * ch.markup);
+
+      // Amendments
+      const amendTotalC = direct ? (Math.max(0, amendCount) * toCents(el("amendFeeEach")?.value || "28.75")) : 0;
+
+      // Totals
+      let total1 = direct
+        ? (b1.rent + b1.linen + b1.clean + b1.fee + b1.addAmt + markup1C)
+        : toCents(el("otaTotal1")?.value || 0);
+
+      let total2, feeDiffC = 0, chargedAmendC = amendTotalC, feeNewTotalC = b2.fee, extExtra = null;
+      if (isDirectExt && os && oe && ns && ne) {
+        const extraDates = listExtraNightDates(os, oe, ns, ne);
+        const extraRentC = sumRatesForDates(extraDates);
+        const extraGelC  = extraDates.length * GEL_PER_NIGHT_C;
+        const extraGSTC  = Math.round(extraRentC * gstRate);
+
+        // Booking fee diff logic (add-on vs min/max caps)
+        const feeBaseCombinedC = b1.rent + extraRentC + extraGelC;
+        const feeCombinedRawC  = Math.round(feeBaseCombinedC * (isFinite(bookingFeeRate) ? bookingFeeRate : 0));
+        feeNewTotalC = Math.max(BOOKING_FEE_MIN_C, Math.min(feeCombinedRawC, BOOKING_FEE_CAP_C));
+        feeDiffC = Math.max(0, feeNewTotalC - b1.fee);
+        if (feeDiffC > chargedAmendC) chargedAmendC = 0;
+
+        total2 = total1 + extraRentC + extraGelC + extraGSTC + feeDiffC + chargedAmendC;
+
+        extExtra = { extraDates, extraRentC, extraGelC, extraGSTC, feeDiffC, feeNewTotalC, chargedAmendC };
+      } else {
+        total2 = b2.rent + ownerGST2C + b2.linen + b2.clean + b2.fee + b2.addAmt + gel2 + markup2C + amendTotalC;
+      }
+
+      const diff = total2 - total1;
+
+      // UI numbers
+      el("obRent").textContent   = nzd(b1.rent);
+      el("obLinen").textContent  = nzd(b1.linen);
+      el("obClean").textContent  = nzd(b1.clean);
+      el("obFee").textContent    = nzd(b1.fee);
+      el("obAdd").textContent    = nzd(b1.addAmt);
+      el("obMarkup").textContent = nzd(markup1C);
+      el("obOtaTotal").textContent = nzd(total1);
+
+      el("nbRent").textContent   = nzd(b2.rent);
+      el("ownerGST2").textContent = nzd(ownerGST2C);
+      el("nbLinen").textContent  = nzd(b2.linen);
+      el("nbClean").textContent  = nzd(b2.clean);
+      el("nbFee").textContent    = (isDirectExt ? nzd(extExtra?.feeNewTotalC||0) : nzd(b2.fee));
+      el("nbAdd").textContent    = nzd(b2.addAmt);
+      el("gelAuto2").textContent = nzd(gel2);
+      el("nbMarkup").textContent = nzd(markup2C);
+      el("nbAmend").textContent  = (direct ? ( isDirectExt ? (extExtra?.chargedAmendC===0 ? "Waived (covered by booking fee difference)" : nzd(extExtra?.chargedAmendC||0)) : (amendTotalC > 0 ? nzd(amendTotalC) : "Waived") ) : "N/A");
+
+      el("total1").textContent = nzd(total1);
+      el("total2").textContent = nzd(total2);
+      el("tile1").textContent  = nzd(total1);
+      el("tile2").textContent  = nzd(total2);
+      el("tile3").textContent  = nzd(Math.abs(diff));
+      el("tile3label").textContent = diff >= 0 ? "Amount to charge guest" : "Amount to refund guest";
+      el("tile3desc").textContent  = diff >= 0 ? "Collect this amount" : "Refund this amount";
+
+      // UI toggles
+      toggleOriginalUI(direct);
+
+      // Show platform policy pop-ups + direct non-overlap modal
+      policyPopups(ch, scen, os, oe);
+      maybeShowDirectModal(ch.key, os, oe, ns, ne);
+
+      // Breakdown (NZ date format; GST on Rent shows "(auto)")
+      const orig
